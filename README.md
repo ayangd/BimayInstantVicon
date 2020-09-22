@@ -14,6 +14,11 @@ If the credential is not correct, the file will be automatically deleted.
 
 The next time you open the program, it will automatically open the Video Conference link for you.
 
+## Grabbed Resources
+
+This program will grab information from BinusMaya MyClass.  
+The link that will be opened is a class of the current date and time (50 minutes before start and 40 minutes after start).
+
 ## Suggesting/Bug Reporting
 
 If you have suggestions or found a bug, kindly create an issue in this repository.
