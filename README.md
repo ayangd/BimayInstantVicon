@@ -2,6 +2,10 @@
 
 Instantly open ongoing Video Conference.
 
+## Releases
+
+You can open the releases from [here](https://github.com/ayangd/BimayInstantVicon/releases).
+
 ## How to Use
 
 If you are using the program for the first time, input your credential.
