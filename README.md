@@ -2,7 +2,7 @@
 
 Instantly open ongoing Video Conference.
 
-Guide:
+Guide:  
 [![Youtube Video Link](youtube.jpg)](https://youtu.be/45hP3AvikB8 "Click to watch")
 
 ## Releases
