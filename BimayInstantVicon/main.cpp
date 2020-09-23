@@ -184,7 +184,7 @@ int main() {
 
 	// Make credential datas
 	// Credentials are saved in "%APPDATA%\BimayInstantVicon\cred.txt"
-	std::wstring appdata = getRoamingAppdataFolder();
+	std::wstring appdata = getRoamingAppdataFolder() + LR"(\)";
 	std::wstring dataFolder = appdata + LR"(BimayInstantVicon\)";
 	std::wstring credFilename = dataFolder + LR"(cred.txt)";
 	std::string username, password;
