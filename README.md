@@ -2,6 +2,9 @@
 
 Instantly open ongoing Video Conference.
 
+Guide:
+[![Youtube Video Link](youtube.jpg)](https://youtu.be/45hP3AvikB8 "Click to watch")
+
 ## Releases
 
 You can open the releases from [here](https://github.com/ayangd/BimayInstantVicon/releases).
