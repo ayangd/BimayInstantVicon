@@ -19,7 +19,8 @@ If you are using the program for the first time, input your credential.
 Your credential will be saved at `%APPDATA%\BimayInstantVicon\cred.txt`.  
 If the credential is not correct, the file will be automatically deleted.
 
-The next time you open the program, it will automatically open the Video Conference link for you.
+The next time you open the program, it will automatically open the Video Conference link for you.  
+If the class is a lab class, it will automatically open the lab login page for you.
 
 ## Grabbed Resources
 

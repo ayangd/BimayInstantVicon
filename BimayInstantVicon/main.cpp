@@ -294,6 +294,18 @@ int main() {
 			std::cout << "Opening \"" << meetingUrl << "\"...";
 			ShellExecuteA(0, 0, meetingUrl.c_str(), 0, 0, SW_SHOW);
 			std::cout << "Done." << std::endl;
+			if (j["SsrComponentDescription"].get<std::string>().compare("Laboratory") == 0) {
+				std::cout << "It's a lab class! Opening https://laboratory.binus.ac.id/lab...";
+				ShellExecuteA(0, 0, "https://laboratory.binus.ac.id/lab", 0, 0, SW_SHOW);
+				std::cout << "Done." << std::endl;
+			}
+			std::cout << "Class info: " <<
+				j["CourseCode"] << " " <<
+				j["CourseTitleEn"] << " " <<
+				j["ClassCode"] << " " <<
+				"Week " << j["WeekSession"] <<
+				"Session " << j["CourseSessionNumber"] <<
+				std::endl;
 			found = true;
 			break;
 		}
