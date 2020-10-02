@@ -1,17 +1,44 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <regex>
 #include <vector>
 #include <chrono>
 #include <ctime>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
-#include <ShlObj.h>
-#include <Fileapi.h>
-#include <shellapi.h>
+#include <base64.h>
+#include <filesystem>
+#include <codecvt>
+
+#include "main.hpp"
 
 using json = nlohmann::json;
+
+/* Encrypting password */
+const char* encrPass = "bimay";
+
+/* Credential file enum */
+typedef enum CredentialFileType {
+	Plain, v1
+} CredentialFileType;
+/* Credential Class */
+class Credential {
+public:
+	std::string username;
+	std::string password;
+	CredentialFileType type;
+	Credential(std::string txtCred, CredentialFileType type) {
+		std::stringstream stream(txtCred);
+		std::getline(stream, this->username);
+		std::getline(stream, this->password);
+		this->type = type;
+	}
+};
+
+/* Credential file variables */
+const char* credMagic = "BimayCred";
 
 /* cURL global variables for global request access */
 // cURL handler
@@ -33,74 +60,6 @@ size_t curlVoidWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdat
 	return size * nmemb;
 }
 
-/* Find function wraps */
-/*
-std::string findMatch(std::string str, std::regex regex) {
-	std::smatch m;
-	std::regex_search(str, m, regex);
-	return m[1];
-}
-
-std::vector<std::string> findMatches(std::string str, std::regex regex) {
-	std::string curstr = str;
-	std::vector<std::string> vec;
-	std::smatch m;
-	while (std::regex_search(curstr, m, regex)) {
-		for (size_t i = 1; i < m.size(); i++) {
-			vec.push_back(m[i]);
-		}
-		curstr = m.suffix().str();
-	}
-	return vec;
-}
-*/
-
-/* BinusMaya find tools */
-/*
-std::string findLoaderPhpLink() {
-	return findMatch(buffer, std::regex("<script.*?src=\"(\\.\\./login/loader\\.php\\?serial=.+?)\">.*?</script>"));
-}
-
-std::vector<std::string> findLoginInputs() {
-	return findMatches(buffer, std::regex("<input.*?name=\"(.+?)\".*?>"));
-}
-
-std::vector<std::string> findHiddenInputs() {
-	return findMatches(buffer, std::regex("<input.*?name=\"(.+?)\".*?value=\"(.+?)\".*?>"));
-}
-
-std::vector<std::string> findMatchingClasses(std::string& classSchedule, std::string& classMapping) {
-	std::string curstr = classSchedule;
-	std::vector<std::string> vec;
-	std::smatch m;
-	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	//struct std::tm* parts = std::localtime_s(&now);
-	struct std::tm parts = {};
-	localtime_s(&parts, &now);
-	std::regex scheduleRegex("{.*?\"CRSE_CODE\"\\s*?:\\s*?\"(.+?)\".*?\"START_DT\"\\s*?:\\s*?\"(\\d+)-(\\d+)-(\\d+).*?\".*?\"MEETING_TIME_START\"\\s*?:\\s*?\"(\\d+):(\\d+)\".*?\"MEETING_TIME_END\"\\s*?:\\s*?\"(\\d+):(\\d+)\".*?\"CLASS_SECTION\"\\s*?:\\s*?\"(.+?)\".*?}");
-	while (std::regex_match(curstr, m, scheduleRegex)) {
-		if (std::stoi(m[2]) == parts.tm_year + 1900 && std::stoi(m[3]) == parts.tm_mon + 1 && std::stoi(m[4]) == parts.tm_mday) {
-			if (std::stoi(m[5]) * 60 + std::stoi(m[6]) > parts.tm_hour * 60 + parts.tm_min - 30 && std::stoi(m[7]) * 60 + std::stoi(m[8]) < parts.tm_hour * 60 + parts.tm_min + 40) {
-				std::regex mapRegex("{.*?\"STRM\"\\s*?:\\s*?\"(.+?)\".*?\"CLASS_NBR\"\\s*?:\\s*?\"(.+?)\".*?\"CRSE_ID\"\\s*?:\\s*?\"(.+?)\".*?\"CRSE_CODE\"\\s*?:\\s*?\"(.+?)\".*?}");
-				std::smatch mm;
-				std::string curstrm = classMapping;
-				while (std::regex_match(curstrm, mm, mapRegex)) {
-					if (mm[4].compare(m[9]) == 0) {
-						vec.push_back(mm[4]);
-						vec.push_back(mm[3]);
-						vec.push_back(mm[1]);
-						vec.push_back(mm[2]);
-					}
-					curstrm = mm.suffix().str();
-				}
-			}
-		}
-		curstr = m.suffix().str();
-	}
-	return vec;
-}
-*/
-
 /* cURL encode wrapper for C++ std::string */
 std::string urlEncode(std::string str) {
 	char* cstr = curl_easy_escape(curl, str.c_str(), 0);
@@ -109,20 +68,16 @@ std::string urlEncode(std::string str) {
 	return s;
 }
 
-/* get roaming folder */
-std::wstring getRoamingAppdataFolder() {
-	wchar_t* dir = NULL;
-	SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, NULL, &dir);
-	std::wstring wstr(dir);
-	CoTaskMemFree(static_cast<void*>(dir));
-	return wstr;
-}
-
 /* get time from seconds, starting from Dec 31, 1899 */
 std::tm getTimeFromEpoch(int64_t secondsEpoch) {
 	time_t date = time_t(secondsEpoch);
 	tm t;
+#ifdef _MSC_VER
 	localtime_s(&t, &date);
+#else
+	tm* tp = localtime(&date);
+	memcpy(tp, &t, sizeof(tm));
+#endif
 	return t;
 }
 
@@ -153,27 +108,103 @@ bool timeInRange(std::tm t, std::tm tRanged, int secondOffset, int secondRange) 
 	return sec > secRanged + secondOffset && sec < secRanged + secondOffset + secondRange;
 }
 
-/* Wait for any key press */
-void waitKeypress() {
-	HANDLE hstdin = GetStdHandle(STD_INPUT_HANDLE);
-	DWORD mode = 0;
-	GetConsoleMode(hstdin, &mode);
-	SetConsoleMode(hstdin, mode & ~ENABLE_LINE_INPUT);
-	std::cin.get();
-	SetConsoleMode(hstdin, mode);
+// Just a simple XOR encryption, with Base64 encoding output.
+/* Encryption for Credentials */
+char* encrypt(char* buffer) {
+	int i = 0;
+	while (buffer[i]) {
+		buffer[i] ^= encrPass[i % (sizeof(encrPass) - 1)];
+		i++;
+	}
+	int encodeLen = 0;
+	return base64((void*)buffer, i - 1, &encodeLen);
 }
 
-/* Prompt password, without character echo */
-std::string promptPassword() {
-	std::string password;
-	HANDLE hstdin = GetStdHandle(STD_INPUT_HANDLE);
-	DWORD mode = 0;
-	GetConsoleMode(hstdin, &mode);
-	SetConsoleMode(hstdin, mode & ~ENABLE_ECHO_INPUT);
-	std::getline(std::cin, password);
-	SetConsoleMode(hstdin, mode);
-	std::cout << std::endl;
-	return password;
+/* Decryption for Credentials */
+char* decrypt(char* buffer) {
+	int decodeLen = 0;
+	char* decodedBuffer = (char*)unbase64(buffer, strlen(buffer), &decodeLen);
+	int i = 0;
+	while (i < decodeLen) {
+		decodedBuffer[i] ^= encrPass[i % (sizeof(encrPass) - 1)];
+		i++;
+	}
+	decodedBuffer[i] = 0;
+	return decodedBuffer;
+}
+
+/* Parse the content of the credential file */
+Credential* parseCredential(std::istream& credFileStream) {
+	credFileStream.seekg(0, credFileStream.end);
+	int size = (int) credFileStream.tellg();
+	credFileStream.seekg(0, credFileStream.beg);
+	char* buf = new char[size + 1]; // +1 for null at the back
+	credFileStream.read(buf, size);
+	buf[size] = 0;                  // Null terminate the string
+	int i = 0;
+
+	// Check for magic
+	bool hasMagic = true;
+	while (buf[i] != 0 && credMagic[i] != 0) {
+		if (buf[i] != credMagic[i]) {
+			hasMagic = false;
+			break;
+		}
+		i++;
+	}
+
+	if (!hasMagic) {
+		// File doesn't have magic. Read in plain text.
+		std::string credPlain(buf);
+		Credential* cred = new Credential(credPlain, CredentialFileType::Plain);
+		delete[] buf;
+		return cred;
+	}
+
+	if (buf[i++] != 'v') { // Without v, it's illegal
+		delete[] buf;
+		return NULL;
+	}
+	char number[16];
+	int numPos = 0;
+	while (buf[i] != ':') {
+		number[numPos++] = buf[i++];
+	}
+	number[numPos] = 0;    // Null terminate
+	i++;                   // Skip colon
+
+	if (atoi(number) == 1) { // Version 1
+		char* decrypted = decrypt(buf + i);
+		std::string stringDecrypted(decrypted);
+		free(decrypted);
+		delete[] buf;
+		return new Credential(stringDecrypted, CredentialFileType::v1);
+	}
+	else {
+		// Illegal credential version for this program version.
+		delete[] buf;
+		return NULL;
+	}
+}
+
+/* Save credential to file */
+void saveCredential(std::ostream& credFileStream, Credential& credential) {
+	credFileStream << credMagic;
+	credFileStream << "v" << 1 << ":"; // Credential version 1
+
+	// Construct data
+	std::stringstream stream;
+	stream << credential.username << std::endl << credential.password << std::endl;
+	std::string credStr(stream.str());
+
+	// Character array allocation and encryption
+	char* varbuf = new char[credStr.length() + 1]; // +1 for null at the back
+	credStr.copy(varbuf, credStr.length());
+	char* encrypted = encrypt(varbuf);
+
+	credFileStream << encrypted;
+	free(encrypted);
+	delete[] varbuf;
 }
 
 int main() {
@@ -181,21 +212,22 @@ int main() {
 	curl = curl_easy_init();
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	curl_easy_setopt(curl, CURLOPT_COOKIELIST, "");
-
+	
 	// Make credential datas
 	// Credentials are saved in "%APPDATA%\BimayInstantVicon\cred.txt"
-	std::wstring appdata = getRoamingAppdataFolder() + LR"(\)";
-	std::wstring dataFolder = appdata + LR"(BimayInstantVicon\)";
-	std::wstring credFilename = dataFolder + LR"(cred.txt)";
-	std::string username, password;
+	std::string appdata = getHomeDir() + "/";
+	std::string dataFolder = appdata + "BimayInstantVicon/";
+	std::string credFilename = dataFolder + "cred.txt";
+	Credential* credential = NULL;
 
 	// Create directory if non-existent
-	CreateDirectory(dataFolder.c_str(), NULL);
+	std::filesystem::create_directory(dataFolder);
 
 	// Check if credential exists
-	WIN32_FIND_DATA findData;
-	if (FindFirstFile(credFilename.c_str(), &findData) == INVALID_HANDLE_VALUE) {
+	//WIN32_FIND_DATA findData;
+	if (!std::filesystem::exists(credFilename)) {
 		// Credential not found
+		std::string username, password;
 		std::cout << "No credential found. Please manually make one." << std::endl;
 		std::cout << "Username: ";
 		std::getline(std::cin, username);
@@ -206,7 +238,10 @@ int main() {
 			std::cout << "Can't save credential." << std::endl;
 			return -1;
 		}
-		cred << username << std::endl << password << std::endl;
+		std::stringstream credStream;
+		credStream << username << std::endl << password << std::endl;
+		credential = new Credential(credStream.str(), CredentialFileType::Plain);
+		saveCredential(cred, *credential);
 		cred.close();
 	}
 	else {
@@ -216,12 +251,16 @@ int main() {
 			std::cout << "Can't load credential." << std::endl;
 			return -1;
 		}
-		std::getline(cred, username);
-		std::getline(cred, password);
+		credential = parseCredential(cred);
+		if (credential == NULL) {
+			std::cout << "Credential format is not recognizable. Deleting one." << std::endl;
+			std::filesystem::remove(credFilename);
+			return -1;
+		}
 		cred.close();
 	}
 	
-	std::string credData = "Username=" + urlEncode(username) + "&Password=" + urlEncode(password);
+	std::string credData = "Username=" + urlEncode(credential->username) + "&Password=" + urlEncode(credential->password);
 
 	curl_easy_setopt(curl, CURLOPT_URL, "https://myclass.apps.binus.ac.id/Auth/Login");
 	curl_easy_setopt(curl, CURLOPT_REFERER, "https://myclass.apps.binus.ac.id/Auth"); // Prevent unauthorized access
@@ -246,8 +285,8 @@ int main() {
 
 		loginResponse = json::parse(buffer);
 		if (!loginResponse["Status"]) {
-			std::cout << "Failed." << std::endl << "Invalid credential." << std::endl;
-			DeleteFile(credFilename.c_str());
+			std::cout << "Failed." << std::endl << "Invalid credential. Deleting one." << std::endl;
+			std::filesystem::remove(credFilename);
 			return -1;
 		}
 	}
@@ -278,13 +317,18 @@ int main() {
 	
 	bool found = false;
 
+	// Get current time and date
+	time_t now = time(NULL);
+	tm t;
+#ifdef _MSC_VER
+	localtime_s(&t, &now);
+#else
+	tm* tp = localtime(&now);
+	memcpy(tp, &t, sizeof(tm));
+#endif
+
 	// Iterate every list item from response
 	for (json j : scheduleResponse) {
-		// Get current time and date
-		time_t now = time(NULL);
-		tm t;
-		localtime_s(&t, &now);
-
 		tm jd = getJSONDate(j["StartDate"].get<std::string>());
 		tm jt = getJSONTime(j["StartTime"].get<std::string>());
 		std::string meetingUrl = j["MeetingUrl"].get<std::string>();
@@ -292,18 +336,20 @@ int main() {
 		// Only match date, time range, and has meeting url
 		if (dateMatches(t, jd) && timeInRange(jt, t, -50 * 60, 90 * 60) && meetingUrl.compare("-") != 0) {
 			std::cout << "Opening \"" << meetingUrl << "\"...";
-			ShellExecuteA(0, 0, meetingUrl.c_str(), 0, 0, SW_SHOW);
+			//ShellExecuteA(0, 0, meetingUrl.c_str(), 0, 0, SW_SHOW);
+			openurl(meetingUrl);
 			std::cout << "Done." << std::endl;
 			if (j["SsrComponentDescription"].get<std::string>().compare("Laboratory") == 0) {
-				std::cout << "It's a lab class! Opening https://laboratory.binus.ac.id/lab...";
-				ShellExecuteA(0, 0, "https://laboratory.binus.ac.id/lab", 0, 0, SW_SHOW);
+				std::cout << "It's a lab class! Opening \"https://laboratory.binus.ac.id/lab\"...";
+				//ShellExecuteA(0, 0, "https://laboratory.binus.ac.id/lab", 0, 0, SW_SHOW);
+				openurl("https://laboratory.binus.ac.id/lab");
 				std::cout << "Done." << std::endl;
 			}
 			std::cout << "Class info: " <<
 				j["CourseCode"] << " " <<
 				j["CourseTitleEn"] << " " <<
 				j["ClassCode"] << " " <<
-				"Week " << j["WeekSession"] <<
+				"Week " << j["WeekSession"] << " " <<
 				"Session " << j["CourseSessionNumber"] <<
 				std::endl;
 			found = true;
@@ -318,194 +364,6 @@ int main() {
 	std::cout << "Press any key to exit.";
 	waitKeypress();
 	std::cout << std::endl;
-
-	/* Retrieve from https://binusmaya.binus.ac.id/, but the site is not stable for retrieval.
-	curl_easy_setopt(curl, CURLOPT_URL, "https://binusmaya.binus.ac.id/login/");
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-
-	std::cout << "Getting login page...";
-	curlCode = curl_easy_perform(curl);
-	if (curlCode != CURLE_OK) {
-		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
-		return -1;
-	}
-	else {
-		// Check response code
-		long responseCode;
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
-		if (responseCode != 200) {
-			std::cout << "Failed." << std::endl << "Response code is " << responseCode << "." << std::endl;
-			return -1;
-		}
-
-		std::cout << "Done." << std::endl;
-	}
-
-	std::string loaderPhpLink = findLoaderPhpLink();
-	std::vector<std::string> fieldNames = findLoginInputs();
-	std::string usernameName = fieldNames[0];
-	std::string passwordName = fieldNames[1];
-	std::string submitName = fieldNames[2];
-
-	std::ofstream loginPage("login.html");
-	loginPage << buffer;
-	loginPage.close();
-
-	curl_easy_reset(curl);
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	curl_easy_setopt(curl, CURLOPT_URL, ("https://binusmaya.binus.ac.id/login/" + loaderPhpLink).c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-
-	std::cout << "Getting loader.php page...";
-	buffer.clear();
-	curlCode = curl_easy_perform(curl);
-	if (curlCode != CURLE_OK) {
-		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
-		return -1;
-	}
-	else {
-		// Check response code
-		long responseCode;
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
-		if (responseCode != 200) {
-			std::cout << "Failed." << std::endl << "Response code is " << responseCode << "." << std::endl;
-			return -1;
-		}
-
-		std::cout << "Done." << std::endl;
-	}
-
-	std::ofstream loaderScript("loader.js");
-	loaderScript << buffer;
-	loaderScript.close();
-
-	std::vector<std::string> hiddenFields = findHiddenInputs();
-	if (hiddenFields.size() == 0) {
-		std::cout << "hiddenFields is empty." << std::endl;
-	}
-	std::string hid1name = hiddenFields[0];
-	std::string hid1val = hiddenFields[1];
-	std::string hid2name = hiddenFields[2];
-	std::string hid2val = hiddenFields[3];
-
-	std::ifstream cred("cred.txt");
-	if (!cred.is_open()) {
-		std::cout << "Can't read credentials." << std::endl;
-		return -1;
-	}
-	std::string username;
-	std::string password;
-	std::getline(cred, username);
-	std::getline(cred, password);
-	cred.close();
-
-	buffer.clear();
-	buffer =
-		urlEncode(usernameName) + "=" + urlEncode(username) + "&" +
-		urlEncode(passwordName) + "=" + urlEncode(password) + "&" +
-		urlEncode(submitName  ) + "=" + urlEncode("Login" ) + "&" +
-		urlEncode(hid1name    ) + "=" + urlEncode(hid1val ) + "&" +
-		urlEncode(hid2name    ) + "=" + urlEncode(hid2val );
-	//buffer =
-	//	usernameName + "=" + username + "&" +
-	//	passwordName + "=" + password + "&" +
-	//	submitName   + "=" + "Login"  + "&" +
-	//	hid1name     + "=" + hid1val  + "&" +
-	//	hid2name     + "=" + hid2val;
-
-	std::ofstream form("form.txt");
-	form << buffer;
-	form.close();
-
-	curl_easy_reset(curl);
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	curl_easy_setopt(curl, CURLOPT_URL, "https://binusmaya.binus.ac.id/login/sys_login.php");
-	curl_easy_setopt(curl, CURLOPT_REFERER, "https://binusmaya.binus.ac.id/login/");
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buffer.c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlVoidWriteCallback);
-
-	std::cout << "Logging in...";
-	curlCode = curl_easy_perform(curl);
-	if (curlCode != CURLE_OK) {
-		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
-		return -1;
-	}
-	else {
-		// Check response code
-		long responseCode;
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
-		if (responseCode != 302) {
-			std::cout << "Failed." << std::endl << "Response code is " << responseCode << "." << std::endl;
-			return -1;
-		}
-
-		// Check redirect
-		char* redirectUrl = NULL;
-		curl_easy_getinfo(curl, CURLINFO_REDIRECT_URL, &redirectUrl);
-		std::string url(redirectUrl);
-		if (url.compare("https://binusmaya.binus.ac.id/block_user.php") == 0) {
-			std::cout << "We're in boi!!" << std::endl;
-		}
-		else {
-			std::cout << "Failed." << std::endl << "Wrong username or password" << std::endl;
-			std::cout << "Redirected to " << url << std::endl;
-			return -1;
-		}
-	}
-
-	curl_easy_reset(curl);
-	curl_easy_setopt(curl, CURLOPT_URL, "https://binusmaya.binus.ac.id/services/ci/index.php/student/class_schedule/classScheduleGetStudentClassSchedule");
-	curl_easy_setopt(curl, CURLOPT_REFERER, "https://binusmaya.binus.ac.id/newStudent");
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-
-	std::cout << "Getting class schedules...";
-	buffer.clear();
-	curlCode = curl_easy_perform(curl);
-	if (curlCode != CURLE_OK) {
-		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
-		return -1;
-	}
-	else {
-		// Check response code
-		long responseCode;
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
-		if (responseCode != 302) {
-			std::cout << "Failed." << std::endl << "Response code is " << responseCode << "." << std::endl;
-			return -1;
-		}
-
-		std::cout << "Done." << std::endl;
-	}
-	std::string classSchedules = buffer;
-
-	curl_easy_reset(curl);
-	curl_easy_setopt(curl, CURLOPT_URL, "https://binusmaya.binus.ac.id/services/ci/index.php/student/init/getStudentCourseMenuCourses");
-	curl_easy_setopt(curl, CURLOPT_REFERER, "https://binusmaya.binus.ac.id/newStudent");
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-
-	std::cout << "Getting class mapping...";
-	buffer.clear();
-	curlCode = curl_easy_perform(curl);
-	if (curlCode != CURLE_OK) {
-		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
-		return -1;
-	}
-	else {
-		// Check response code
-		long responseCode;
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
-		if (responseCode != 302) {
-			std::cout << "Failed." << std::endl << "Response code is " << responseCode << "." << std::endl;
-			return -1;
-		}
-
-		std::cout << "Done." << std::endl;
-	}
-	std::string classMapping = buffer;
-
-	std::vector<std::string> result = findMatchingClasses(classSchedules, classMapping);
-	std::cout << "Result: " << result.size() << std::endl;
-	*/
 
 	curl_easy_cleanup(curl);
 	curl_global_cleanup();
