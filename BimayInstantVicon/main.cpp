@@ -20,9 +20,9 @@ using json = nlohmann::json;
 const char* encrPass = "bimay";
 
 /* Credential file enum */
-typedef enum CredentialFileType {
+enum class CredentialFileType {
 	Plain, v1
-} CredentialFileType;
+};
 /* Credential Class */
 class Credential {
 public:
