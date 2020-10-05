@@ -22,6 +22,11 @@ If the credential is not correct, the file will be automatically deleted.
 The next time you open the program, it will automatically open the Video Conference link for you.  
 If the class is a lab class, it will automatically open the lab login page for you.
 
+## Grabbed Resources
+
+This program will grab information from BinusMaya MyClass.  
+The link that will be opened is a class of the current date and time (50 minutes before start and 40 minutes after start).
+
 ## Build from Source
 
 You would need a compiler with C++17 support (compiler release on 2017 or later).
@@ -43,11 +48,6 @@ After everyting is satisfied, just run:
     make
 
 And this will output `bimayinstv`. If you wish to run this anywhere, just put `bimayinstv` to `/usr/bin`.
-
-## Grabbed Resources
-
-This program will grab information from BinusMaya MyClass.  
-The link that will be opened is a class of the current date and time (50 minutes before start and 40 minutes after start).
 
 ## Suggesting/Bug Reporting
 
