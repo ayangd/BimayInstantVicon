@@ -224,7 +224,6 @@ int main() {
 	std::filesystem::create_directory(dataFolder);
 
 	// Check if credential exists
-	//WIN32_FIND_DATA findData;
 	if (!std::filesystem::exists(credFilename)) {
 		// Credential not found
 		std::string username, password;
@@ -336,12 +335,10 @@ int main() {
 		// Only match date, time range, and has meeting url
 		if (dateMatches(t, jd) && timeInRange(jt, t, -50 * 60, 90 * 60) && meetingUrl.compare("-") != 0) {
 			std::cout << "Opening \"" << meetingUrl << "\"...";
-			//ShellExecuteA(0, 0, meetingUrl.c_str(), 0, 0, SW_SHOW);
 			openurl(meetingUrl);
 			std::cout << "Done." << std::endl;
-			if (j["SsrComponentDescription"].get<std::string>().compare("Laboratory") == 0) {
+			if (std::regex_match(j["SsrComponentDescription"].get<std::string>(), std::regex(".*Laboratory"))) {
 				std::cout << "It's a lab class! Opening \"https://laboratory.binus.ac.id/lab\"...";
-				//ShellExecuteA(0, 0, "https://laboratory.binus.ac.id/lab", 0, 0, SW_SHOW);
 				openurl("https://laboratory.binus.ac.id/lab");
 				std::cout << "Done." << std::endl;
 			}
