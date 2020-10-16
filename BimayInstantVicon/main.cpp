@@ -11,6 +11,7 @@
 #include <base64.h>
 #include <filesystem>
 #include <codecvt>
+#include <filters.h>
 
 #include "main.hpp"
 
@@ -110,27 +111,36 @@ bool timeInRange(std::tm t, std::tm tRanged, int secondOffset, int secondRange) 
 
 // Just a simple XOR encryption, with Base64 encoding output.
 /* Encryption for Credentials */
-char* encrypt(char* buffer) {
+std::string encrypt(std::string& in) {
+	std::vector<byte> buf(in.begin(), in.end());
 	int i = 0;
-	while (buffer[i]) {
-		buffer[i] ^= encrPass[i % (sizeof(encrPass) - 1)];
+	for (auto it = buf.begin(); it != buf.end(); it++) {
+		*it ^= encrPass[i % (sizeof(encrPass) - 1)];
 		i++;
 	}
-	int encodeLen = 0;
-	return base64((void*)buffer, i - 1, &encodeLen);
+	std::string out;
+	CryptoPP::VectorSource vs(buf, true,
+		new CryptoPP::Base64Encoder(
+			new CryptoPP::StringSink(out)
+		)
+	);
+	return out;
 }
 
 /* Decryption for Credentials */
-char* decrypt(char* buffer) {
-	int decodeLen = 0;
-	char* decodedBuffer = (char*)unbase64(buffer, strlen(buffer), &decodeLen);
+std::string decrypt(std::string& in) {
+	std::vector<byte> buf;
+	CryptoPP::StringSource ss(in, true,
+		new CryptoPP::Base64Decoder(
+			new CryptoPP::VectorSink(buf)
+		)
+	);
 	int i = 0;
-	while (i < decodeLen) {
-		decodedBuffer[i] ^= encrPass[i % (sizeof(encrPass) - 1)];
+	for (auto it = buf.begin(); it != buf.end(); it++) {
+		*it ^= encrPass[i % (sizeof(encrPass) - 1)];
 		i++;
 	}
-	decodedBuffer[i] = 0;
-	return decodedBuffer;
+	return std::string(buf.begin(), buf.end());
 }
 
 /* Parse the content of the credential file */
@@ -174,11 +184,9 @@ Credential* parseCredential(std::istream& credFileStream) {
 	i++;                   // Skip colon
 
 	if (atoi(number) == 1) { // Version 1
-		char* decrypted = decrypt(buf + i);
-		std::string stringDecrypted(decrypted);
-		free(decrypted);
+		std::string strbuf(buf + i);
 		delete[] buf;
-		return new Credential(stringDecrypted, CredentialFileType::v1);
+		return new Credential(decrypt(strbuf), CredentialFileType::v1);
 	}
 	else {
 		// Illegal credential version for this program version.
@@ -197,14 +205,8 @@ void saveCredential(std::ostream& credFileStream, Credential& credential) {
 	stream << credential.username << std::endl << credential.password << std::endl;
 	std::string credStr(stream.str());
 
-	// Character array allocation and encryption
-	char* varbuf = new char[credStr.length() + 1]; // +1 for null at the back
-	credStr.copy(varbuf, credStr.length());
-	char* encrypted = encrypt(varbuf);
-
-	credFileStream << encrypted;
-	free(encrypted);
-	delete[] varbuf;
+	// Write encrypted to file stream
+	credFileStream << encrypt(credStr);
 }
 
 int main() {
