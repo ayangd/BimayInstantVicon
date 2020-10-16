@@ -12,6 +12,9 @@
 #include <filesystem>
 #include <codecvt>
 #include <filters.h>
+#include <hmac.h>
+#include <sha.h>
+#include <hex.h>
 
 #include "main.hpp"
 
@@ -210,6 +213,22 @@ void saveCredential(std::ostream& credFileStream, Credential& credential) {
 }
 
 int main() {
+	// Testing
+	std::string password, mac, encoded;
+	std::cin >> password;
+	CryptoPP::HMAC<CryptoPP::SHA1> hmac((byte*)password.c_str(), password.length());
+	CryptoPP::StringSource ss(password, true,
+		new CryptoPP::HashFilter(hmac,
+			new CryptoPP::HexEncoder(
+				new CryptoPP::StringSink(
+					encoded
+				)
+			)
+		)
+	);
+	std::cout << encoded << std::endl;
+	return 0;
+
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl = curl_easy_init();
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
