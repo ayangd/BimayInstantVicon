@@ -28,19 +28,27 @@ const char* encrPass = "bimay";
 
 /* Credential file enum */
 enum class CredentialFileType {
-	Plain, v1
+	Plain, v1, v2
 };
 /* Credential Class */
 class Credential {
 public:
 	std::string username;
+	std::string nim;
 	std::string password;
 	CredentialFileType type;
 	Credential(std::string txtCred, CredentialFileType type) {
 		std::stringstream stream(txtCred);
-		std::getline(stream, this->username);
-		std::getline(stream, this->password);
 		this->type = type;
+		if (type == CredentialFileType::v1) {
+			std::getline(stream, this->username);
+			std::getline(stream, this->password);
+		}
+		else if (type == CredentialFileType::v2) {
+			std::getline(stream, this->username);
+			std::getline(stream, this->nim);
+			std::getline(stream, this->password);
+		}
 	}
 };
 
@@ -189,10 +197,15 @@ Credential* parseCredential(std::istream& credFileStream) {
 	number[numPos] = 0;    // Null terminate
 	i++;                   // Skip colon
 
-	if (atoi(number) == 1) { // Version 1
+	if (atoi(number) == 1) {      // Version 1
 		std::string strbuf(buf + i);
 		delete[] buf;
 		return new Credential(decrypt(strbuf), CredentialFileType::v1);
+	}
+	else if (atoi(number) == 2) { // Version 2
+		std::string strbuf(buf + i);
+		delete[] buf;
+		return new Credential(decrypt(strbuf), CredentialFileType::v2);
 	}
 	else {
 		// Illegal credential version for this program version.
@@ -204,17 +217,40 @@ Credential* parseCredential(std::istream& credFileStream) {
 /* Save credential to file */
 void saveCredential(std::ostream& credFileStream, Credential& credential) {
 	credFileStream << credMagic;
-	credFileStream << "v" << 1 << ":"; // Credential version 1
+	credFileStream << "v" << 2 << ":"; // Credential version 1
 
 	// Construct data
 	std::stringstream stream;
-	stream << credential.username << std::endl << credential.password << std::endl;
+	stream << credential.username << std::endl << credential.nim << std::endl << credential.password << std::endl;
 	std::string credStr(stream.str());
 
 	// Write encrypted to file stream
 	credFileStream << encrypt(credStr);
 }
 
+/* Prompt for credential */
+Credential* promptCredential(bool promptUsername = true, bool promptNim = true, bool promptPasswordd = true) {
+	std::string username, nim, password;
+	if (promptUsername && promptNim && promptPasswordd)
+		std::cout << "No credential found. Please manually make one." << std::endl;
+	if (promptUsername) {
+		std::cout << "Username: ";
+		std::getline(std::cin, username);
+	}
+	if (promptNim) {
+		std::cout << "NIM (For Lab): ";
+		std::getline(std::cin, nim);
+	}
+	if (promptPasswordd) {
+		std::cout << "Password (not shown): ";
+		password = promptPassword();
+	}
+	std::stringstream ss;
+	ss << username << std::endl << nim << std::endl << password << std::endl;
+	return new Credential(ss.str(), CredentialFileType::v2);
+}
+
+/* Lab encryption thing */
 std::string encryptToBase64(std::string& username, std::string& password) {
 	byte passwordsalt[CryptoPP::HMAC<CryptoPP::SHA1>::DIGESTSIZE];
 	CryptoPP::HMAC<CryptoPP::SHA1> hmac((byte*)username.c_str(), username.length());
@@ -248,7 +284,7 @@ std::string encryptToBase64(std::string& username, std::string& password) {
 			)
 		)
 	);
-
+	base64output.pop_back();
 	return base64output;
 }
 
@@ -271,20 +307,12 @@ int main() {
 	// Check if credential exists
 	if (!std::filesystem::exists(credFilename)) {
 		// Credential not found
-		std::string username, password;
-		std::cout << "No credential found. Please manually make one." << std::endl;
-		std::cout << "Username: ";
-		std::getline(std::cin, username);
-		std::cout << "Password: ";
-		password = promptPassword();
+		credential = promptCredential();
 		std::ofstream cred(credFilename);
 		if (!cred) {
 			std::cout << "Can't save credential." << std::endl;
 			return -1;
 		}
-		std::stringstream credStream;
-		credStream << username << std::endl << password << std::endl;
-		credential = new Credential(credStream.str(), CredentialFileType::Plain);
 		saveCredential(cred, *credential);
 		cred.close();
 	}
@@ -303,9 +331,70 @@ int main() {
 		}
 		cred.close();
 	}
+
+	// Check if NIM included
+	if (credential->nim.empty()) {
+		Credential* temp = promptCredential(false, true, false);
+		credential->nim = temp->nim;
+		delete temp;
+		std::ofstream cred(credFilename);
+		if (!cred) {
+			std::cout << "Can't save credential." << std::endl;
+			return -1;
+		}
+		saveCredential(cred, *credential);
+		cred.close();
+	}
+
+	// Get salt
+	std::string nimstr = "\"" + credential->nim + "\"";
+	curl_easy_reset(curl);
+	curl_easy_setopt(curl, CURLOPT_URL, "https://laboratory.binus.ac.id/lab/General/Salt");
+	curl_easy_setopt(curl, CURLOPT_REFERER, "https://laboratory.binus.ac.id/lab/index.html");
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, nimstr.c_str());
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+	struct curl_slist* hs = curl_slist_append(NULL, "Content-Type: application/json");
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+	buffer.clear();
+
+	std::cout << "Getting salt...";
+	curlCode = curl_easy_perform(curl);
+	if (curlCode != CURLE_OK) {
+		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
+		return -1;
+	}
+	std::cout << "Done." << std::endl;
+	std::string salt(buffer.begin() + 1, buffer.end() - 1); // Ignore quotation marks
+
+	// Create encrypted password
+	std::string saltnim = salt + credential->nim;
+	std::string encryptedPassword = encryptToBase64(saltnim, credential->password);
+
+	// Lab login
+	std::string labCredData = "{\"UserName\":\"" + credential->nim + "\",\"Password\":\"" + encryptedPassword + "\"}";
+	std::cout << "Sending \"" << labCredData << "\"." << std::endl;
+	curl_easy_reset(curl);
+	curl_easy_setopt(curl, CURLOPT_URL, "https://laboratory.binus.ac.id/lab/General/SignIn");
+	curl_easy_setopt(curl, CURLOPT_REFERER, "https://laboratory.binus.ac.id/lab/index.html");
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, labCredData.c_str());
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+	buffer.clear();
+
+	std::cout << "Logging in...";
+	curlCode = curl_easy_perform(curl);
+	if (curlCode != CURLE_OK) {
+		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
+		return -1;
+	}
+	std::cout << "Done." << std::endl;
+	std::cout << "Response: \"" << buffer << "\"." << std::endl;
+
+	return 0;
 	
 	std::string credData = "Username=" + urlEncode(credential->username) + "&Password=" + urlEncode(credential->password);
 
+	curl_easy_reset(curl);
 	curl_easy_setopt(curl, CURLOPT_URL, "https://myclass.apps.binus.ac.id/Auth/Login");
 	curl_easy_setopt(curl, CURLOPT_REFERER, "https://myclass.apps.binus.ac.id/Auth"); // Prevent unauthorized access
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, credData.c_str());
