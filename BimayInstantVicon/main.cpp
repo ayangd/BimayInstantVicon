@@ -36,7 +36,7 @@ public:
 	std::string username;
 	std::string password;
 	CredentialFileType type;
-	Credential(std::string txtCred, CredentialFileType type) {
+	Credential(std::string& txtCred, CredentialFileType type) {
 		std::stringstream stream(txtCred);
 		std::getline(stream, this->username);
 		std::getline(stream, this->password);
@@ -68,7 +68,7 @@ size_t curlVoidWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdat
 }
 
 /* cURL encode wrapper for C++ std::string */
-std::string urlEncode(std::string str) {
+std::string urlEncode(std::string& str) {
 	char* cstr = curl_easy_escape(curl, str.c_str(), 0);
 	std::string s(cstr);
 	curl_free(cstr);
@@ -89,14 +89,14 @@ std::tm getTimeFromEpoch(int64_t secondsEpoch) {
 }
 
 /* Handle /Date(secondEpoch)/ string in JSON */
-std::tm getJSONDate(std::string date) {
+std::tm getJSONDate(std::string& date) {
 	std::smatch sm;
 	std::regex_search(date, sm, std::regex("\\d+"));
 	return getTimeFromEpoch(std::stoll(sm[0]) / 1000);
 }
 
 /* Handle HH:mm:ss string in JSON */
-std::tm getJSONTime(std::string time) {
+std::tm getJSONTime(std::string& time) {
 	std::smatch sm;
 	std::regex_search(time, sm, std::regex("(\\d{2}):(\\d{2}):(\\d{2})"));
 	struct tm t = { std::stoi(sm[3]), std::stoi(sm[2]), std::stoi(sm[1]) };
@@ -215,12 +215,8 @@ void saveCredential(std::ostream& credFileStream, Credential& credential) {
 	credFileStream << encrypt(credStr);
 }
 
-int main() {
-	// Testing
+std::string encryptToBase64(std::string& username, std::string& password) {
 	byte passwordsalt[CryptoPP::HMAC<CryptoPP::SHA1>::DIGESTSIZE];
-	std::string username, password;
-	std::cin >> username;
-	std::cin >> password;
 	CryptoPP::HMAC<CryptoPP::SHA1> hmac((byte*)username.c_str(), username.length());
 	CryptoPP::StringSource ss(username, true,
 		new CryptoPP::HashFilter(hmac,
@@ -229,7 +225,7 @@ int main() {
 			)
 		)
 	);
-	
+
 	byte rfcbytes[48];
 	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
 	pbkdf2.DeriveKey(rfcbytes, sizeof(rfcbytes), 0, (byte*)username.c_str(), username.length(), (byte*)passwordsalt, sizeof(passwordsalt), 10);
@@ -237,6 +233,7 @@ int main() {
 	CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption cfbEncryptor(rfcbytes, 32, rfcbytes + 32);
 
 	std::vector<byte> cipher;
+	std::string base64output;
 	std::vector<byte> unicodePassword;
 	for (auto it = password.begin(); it != password.end(); it++) {
 		unicodePassword.push_back(*it);
@@ -244,18 +241,18 @@ int main() {
 	}
 	CryptoPP::VectorSource ss2(unicodePassword, true,
 		new CryptoPP::StreamTransformationFilter(cfbEncryptor,
-			new CryptoPP::VectorSink(cipher)
+			new CryptoPP::Base64Encoder(
+				new CryptoPP::StringSink(
+					base64output
+				)
+			)
 		)
 	);
 
-	std::cout << "Output size: " << cipher.size() << std::endl;
-	for (auto it = cipher.begin(); it != cipher.end(); it++) {
-		std::cout << (int)*it << " ";
-	}
-	std::cout << std::endl;
+	return base64output;
+}
 
-	return 0;
-
+int main() {
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl = curl_easy_init();
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
