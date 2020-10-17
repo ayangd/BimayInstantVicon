@@ -15,6 +15,9 @@
 #include <hmac.h>
 #include <sha.h>
 #include <hex.h>
+#include <pwdbased.h>
+#include <modes.h>
+#include <aes.h>
 
 #include "main.hpp"
 
@@ -214,19 +217,43 @@ void saveCredential(std::ostream& credFileStream, Credential& credential) {
 
 int main() {
 	// Testing
-	std::string password, mac, encoded;
+	byte passwordsalt[CryptoPP::HMAC<CryptoPP::SHA1>::DIGESTSIZE];
+	std::string username, password;
+	std::cin >> username;
 	std::cin >> password;
-	CryptoPP::HMAC<CryptoPP::SHA1> hmac((byte*)password.c_str(), password.length());
-	CryptoPP::StringSource ss(password, true,
+	CryptoPP::HMAC<CryptoPP::SHA1> hmac((byte*)username.c_str(), username.length());
+	CryptoPP::StringSource ss(username, true,
 		new CryptoPP::HashFilter(hmac,
-			new CryptoPP::HexEncoder(
-				new CryptoPP::StringSink(
-					encoded
-				)
+			new CryptoPP::ArraySink(
+				passwordsalt, CryptoPP::HMAC<CryptoPP::SHA1>::DIGESTSIZE
 			)
 		)
 	);
-	std::cout << encoded << std::endl;
+	
+	byte rfcbytes[48];
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
+	pbkdf2.DeriveKey(rfcbytes, sizeof(rfcbytes), 0, (byte*)username.c_str(), username.length(), (byte*)passwordsalt, sizeof(passwordsalt), 10);
+
+	CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption cfbEncryptor(rfcbytes, 32, rfcbytes + 32);
+
+	std::vector<byte> cipher;
+	std::vector<byte> unicodePassword;
+	for (auto it = password.begin(); it != password.end(); it++) {
+		unicodePassword.push_back(*it);
+		unicodePassword.push_back(0);
+	}
+	CryptoPP::VectorSource ss2(unicodePassword, true,
+		new CryptoPP::StreamTransformationFilter(cfbEncryptor,
+			new CryptoPP::VectorSink(cipher)
+		)
+	);
+
+	std::cout << "Output size: " << cipher.size() << std::endl;
+	for (auto it = cipher.begin(); it != cipher.end(); it++) {
+		std::cout << (int)*it << " ";
+	}
+	std::cout << std::endl;
+
 	return 0;
 
 	curl_global_init(CURL_GLOBAL_ALL);
