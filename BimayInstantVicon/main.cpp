@@ -36,7 +36,7 @@ public:
 	std::string username;
 	std::string password;
 	CredentialFileType type;
-	Credential(std::string& txtCred, CredentialFileType type) {
+	Credential(std::string txtCred, CredentialFileType type) {
 		std::stringstream stream(txtCred);
 		std::getline(stream, this->username);
 		std::getline(stream, this->password);
@@ -89,14 +89,14 @@ std::tm getTimeFromEpoch(int64_t secondsEpoch) {
 }
 
 /* Handle /Date(secondEpoch)/ string in JSON */
-std::tm getJSONDate(std::string& date) {
+std::tm getJSONDate(std::string date) {
 	std::smatch sm;
 	std::regex_search(date, sm, std::regex("\\d+"));
 	return getTimeFromEpoch(std::stoll(sm[0]) / 1000);
 }
 
 /* Handle HH:mm:ss string in JSON */
-std::tm getJSONTime(std::string& time) {
+std::tm getJSONTime(std::string time) {
 	std::smatch sm;
 	std::regex_search(time, sm, std::regex("(\\d{2}):(\\d{2}):(\\d{2})"));
 	struct tm t = { std::stoi(sm[3]), std::stoi(sm[2]), std::stoi(sm[1]) };
