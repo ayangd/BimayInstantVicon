@@ -345,52 +345,6 @@ int main() {
 		saveCredential(cred, *credential);
 		cred.close();
 	}
-
-	// Get salt
-	std::string nimstr = "\"" + credential->nim + "\"";
-	curl_easy_reset(curl);
-	curl_easy_setopt(curl, CURLOPT_URL, "https://laboratory.binus.ac.id/lab/General/Salt");
-	curl_easy_setopt(curl, CURLOPT_REFERER, "https://laboratory.binus.ac.id/lab/index.html");
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, nimstr.c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-	struct curl_slist* hs = curl_slist_append(NULL, "Content-Type: application/json");
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-	buffer.clear();
-
-	std::cout << "Getting salt...";
-	curlCode = curl_easy_perform(curl);
-	if (curlCode != CURLE_OK) {
-		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
-		return -1;
-	}
-	std::cout << "Done." << std::endl;
-	std::string salt(buffer.begin() + 1, buffer.end() - 1); // Ignore quotation marks
-
-	// Create encrypted password
-	std::string saltnim = salt + credential->nim;
-	std::string encryptedPassword = encryptToBase64(saltnim, credential->password);
-
-	// Lab login
-	std::string labCredData = "{\"UserName\":\"" + credential->nim + "\",\"Password\":\"" + encryptedPassword + "\"}";
-	std::cout << "Sending \"" << labCredData << "\"." << std::endl;
-	curl_easy_reset(curl);
-	curl_easy_setopt(curl, CURLOPT_URL, "https://laboratory.binus.ac.id/lab/General/SignIn");
-	curl_easy_setopt(curl, CURLOPT_REFERER, "https://laboratory.binus.ac.id/lab/index.html");
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, labCredData.c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
-	buffer.clear();
-
-	std::cout << "Logging in...";
-	curlCode = curl_easy_perform(curl);
-	if (curlCode != CURLE_OK) {
-		std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
-		return -1;
-	}
-	std::cout << "Done." << std::endl;
-	std::cout << "Response: \"" << buffer << "\"." << std::endl;
-
-	return 0;
 	
 	std::string credData = "Username=" + urlEncode(credential->username) + "&Password=" + urlEncode(credential->password);
 
@@ -472,9 +426,84 @@ int main() {
 			openurl(meetingUrl);
 			std::cout << "Done." << std::endl;
 			if (std::regex_match(j["SsrComponentDescription"].get<std::string>(), std::regex(".*Laboratory"))) {
-				std::cout << "It's a lab class! Opening \"https://laboratory.binus.ac.id/lab\"...";
-				openurl("https://laboratory.binus.ac.id/lab");
+				std::cout << "Lab class detected." << std::endl;
+
+				// Get salt
+				std::string nimstr = "\"" + credential->nim + "\"";
+				curl_easy_reset(curl);
+				curl_easy_setopt(curl, CURLOPT_URL, "https://laboratory.binus.ac.id/lab/General/Salt");
+				curl_easy_setopt(curl, CURLOPT_REFERER, "https://laboratory.binus.ac.id/lab/index.html");
+				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, nimstr.c_str());
+				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+				struct curl_slist* hs = curl_slist_append(NULL, "Content-Type: application/json");
+				curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+				buffer.clear();
+
+				std::cout << "Getting salt...";
+				curlCode = curl_easy_perform(curl);
+				if (curlCode != CURLE_OK) {
+					std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
+					return -1;
+				}
 				std::cout << "Done." << std::endl;
+				std::string salt(buffer.begin() + 1, buffer.end() - 1); // Ignore quotation marks
+
+				// Create encrypted password
+				std::string saltnim = salt + credential->nim;
+				std::string encryptedPassword = encryptToBase64(saltnim, credential->password);
+
+				// Lab login
+				std::string labCredData = "{\"UserName\":\"" + credential->nim + "\",\"Password\":\"" + encryptedPassword + "\"}";
+				curl_easy_reset(curl);
+				curl_easy_setopt(curl, CURLOPT_URL, "https://laboratory.binus.ac.id/lab/General/SignIn");
+				curl_easy_setopt(curl, CURLOPT_REFERER, "https://laboratory.binus.ac.id/lab/index.html");
+				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, labCredData.c_str());
+				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+				curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+				buffer.clear();
+
+				std::cout << "Logging in to lab...";
+				curlCode = curl_easy_perform(curl);
+				if (curlCode != CURLE_OK) {
+					std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
+					return -1;
+				}
+				json labLoginResponse;
+				if (buffer.empty()) {
+					// Check captcha
+					std::cout << "Failed." << std::endl;
+					std::string nullstr = "null";
+					std::string hasCaptchaURL = "https://laboratory.binus.ac.id/lab/General/HasCaptcha/" + credential->nim;
+					curl_easy_reset(curl);
+					curl_easy_setopt(curl, CURLOPT_URL, hasCaptchaURL.c_str());
+					curl_easy_setopt(curl, CURLOPT_REFERER, "https://laboratory.binus.ac.id/lab/index.html");
+					curl_easy_setopt(curl, CURLOPT_POSTFIELDS, nullstr.c_str());
+					curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+					curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hs);
+					buffer.clear();
+
+					std::cout << "Checking Captcha...";
+					curlCode = curl_easy_perform(curl);
+					if (curlCode != CURLE_OK) {
+						std::cout << "Failed." << std::endl << curl_easy_strerror(curlCode) << std::endl;
+						return -1;
+					}
+					if (buffer.compare("\"true\"") == 0) {
+						std::cout << "Available! Please manually login and solve captcha." << std::endl;
+						openurl("https://laboratory.binus.ac.id/lab");
+					}
+					else {
+						std::cout << "Not Available! Probably wrong credentials!" << std::endl;
+						std::cout << "Deleting credential." << std::endl;
+						std::filesystem::remove(credFilename);
+						return -1;
+					}
+				}
+				else {
+					std::cout << "Done." << std::endl;
+					labLoginResponse = json::parse(buffer);
+					std::cout << "Logged in as " << labLoginResponse["Name"].get<std::string>() << "." << std::endl;
+				}
 			}
 			std::cout << "Class info: " <<
 				j["CourseCode"] << " " <<

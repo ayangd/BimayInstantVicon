@@ -14,13 +14,14 @@ You can open the releases from [here](https://github.com/ayangd/BimayInstantVico
 If you are using the program for the first time, input your credential.
 
     Username: <Your bimay name, without @binus.ac.id>
+    NIM: <Your NIM, for lab login>
     Password: <Your bimay password, won't be shown on screen upon typing>
 
 Your credential will be saved at `%APPDATA%\BimayInstantVicon\cred.txt`.  
 If the credential is not correct, the file will be automatically deleted.
 
 The next time you open the program, it will automatically open the Video Conference link for you.  
-If the class is a lab class, it will automatically open the lab login page for you.
+If the class is a lab class, it will automatically login for you, if there's no captcha. Else, the login page will show up.
 
 ## Grabbed Resources
 
