@@ -8,9 +8,10 @@
 #include <ctime>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
-#include <base64.h>
 #include <filesystem>
 #include <codecvt>
+#ifdef _MSC_VER
+#include <base64.h>
 #include <filters.h>
 #include <hmac.h>
 #include <sha.h>
@@ -18,6 +19,16 @@
 #include <pwdbased.h>
 #include <modes.h>
 #include <aes.h>
+#else
+#include <crypto++/base64.h>
+#include <crypto++/filters.h>
+#include <crypto++/hmac.h>
+#include <crypto++/sha.h>
+#include <crypto++/hex.h>
+#include <crypto++/pwdbased.h>
+#include <crypto++/modes.h>
+#include <crypto++/aes.h>
+#endif
 
 #include "main.hpp"
 
@@ -126,35 +137,38 @@ bool timeInRange(std::tm t, std::tm tRanged, int secondOffset, int secondRange) 
 // Just a simple XOR encryption, with Base64 encoding output.
 /* Encryption for Credentials */
 std::string encrypt(std::string& in) {
-	std::vector<byte> buf(in.begin(), in.end());
+	uint8_t* buf = new uint8_t[in.size()];
 	int i = 0;
-	for (auto it = buf.begin(); it != buf.end(); it++) {
-		*it ^= encrPass[i % (sizeof(encrPass) - 1)];
+	for (auto it = in.begin(); it != in.end(); it++) {
+		buf[i] = (uint8_t) (*it ^ encrPass[i % (sizeof(encrPass) - 1)]);
 		i++;
 	}
 	std::string out;
-	CryptoPP::VectorSource vs(buf, true,
+	CryptoPP::ArraySource vs(buf, in.size(), true,
 		new CryptoPP::Base64Encoder(
 			new CryptoPP::StringSink(out)
 		)
 	);
+	delete[] buf;
 	return out;
 }
 
 /* Decryption for Credentials */
 std::string decrypt(std::string& in) {
-	std::vector<byte> buf;
+	uint8_t buf[1024];
+	CryptoPP::ArraySink as(buf, 1024);
 	CryptoPP::StringSource ss(in, true,
 		new CryptoPP::Base64Decoder(
-			new CryptoPP::VectorSink(buf)
+			new CryptoPP::Redirector(
+				as
+			)
 		)
 	);
-	int i = 0;
-	for (auto it = buf.begin(); it != buf.end(); it++) {
-		*it ^= encrPass[i % (sizeof(encrPass) - 1)];
-		i++;
+	int totalPutLength = as.TotalPutLength();
+	for (int i = 0; i < totalPutLength; i++) {
+		buf[i] ^= encrPass[i % (sizeof(encrPass) - 1)];
 	}
-	return std::string(buf.begin(), buf.end());
+	return std::string((char*)buf, totalPutLength);
 }
 
 /* Parse the content of the credential file */
@@ -252,8 +266,8 @@ Credential* promptCredential(bool promptUsername = true, bool promptNim = true, 
 
 /* Lab encryption thing */
 std::string encryptToBase64(std::string& username, std::string& password) {
-	byte passwordsalt[CryptoPP::HMAC<CryptoPP::SHA1>::DIGESTSIZE];
-	CryptoPP::HMAC<CryptoPP::SHA1> hmac((byte*)username.c_str(), username.length());
+	uint8_t passwordsalt[CryptoPP::HMAC<CryptoPP::SHA1>::DIGESTSIZE];
+	CryptoPP::HMAC<CryptoPP::SHA1> hmac((uint8_t*)username.c_str(), username.length());
 	CryptoPP::StringSource ss(username, true,
 		new CryptoPP::HashFilter(hmac,
 			new CryptoPP::ArraySink(
@@ -262,20 +276,20 @@ std::string encryptToBase64(std::string& username, std::string& password) {
 		)
 	);
 
-	byte rfcbytes[48];
+	uint8_t rfcbytes[48];
 	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
-	pbkdf2.DeriveKey(rfcbytes, sizeof(rfcbytes), 0, (byte*)username.c_str(), username.length(), (byte*)passwordsalt, sizeof(passwordsalt), 10);
+	pbkdf2.DeriveKey(rfcbytes, sizeof(rfcbytes), 0, (uint8_t*)username.c_str(), username.length(), (uint8_t*)passwordsalt, sizeof(passwordsalt), 10);
 
 	CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption cfbEncryptor(rfcbytes, 32, rfcbytes + 32);
 
-	std::vector<byte> cipher;
 	std::string base64output;
-	std::vector<byte> unicodePassword;
+	uint8_t* unicodePassword = new uint8_t[password.size()];
+	int i = 0;
 	for (auto it = password.begin(); it != password.end(); it++) {
-		unicodePassword.push_back(*it);
-		unicodePassword.push_back(0);
+		unicodePassword[i++] = *it;
+		unicodePassword[i++] = (uint8_t)0;
 	}
-	CryptoPP::VectorSource ss2(unicodePassword, true,
+	CryptoPP::ArraySource ss2(unicodePassword, password.size(), true,
 		new CryptoPP::StreamTransformationFilter(cfbEncryptor,
 			new CryptoPP::Base64Encoder(
 				new CryptoPP::StringSink(

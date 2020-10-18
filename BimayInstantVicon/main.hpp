@@ -52,7 +52,7 @@ std::string promptPassword() {
 #elif defined (__APPLE__) // Only MacOS
 #define _urlopen "open "
 
-#endif
+#endif                    // End only
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
