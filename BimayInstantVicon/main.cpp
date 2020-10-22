@@ -283,13 +283,13 @@ std::string encryptToBase64(std::string& username, std::string& password) {
 	CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption cfbEncryptor(rfcbytes, 32, rfcbytes + 32);
 
 	std::string base64output;
-	uint8_t* unicodePassword = new uint8_t[password.size()];
+	uint8_t* unicodePassword = new uint8_t[password.size() * 2];
 	int i = 0;
 	for (auto it = password.begin(); it != password.end(); it++) {
 		unicodePassword[i++] = *it;
 		unicodePassword[i++] = (uint8_t)0;
 	}
-	CryptoPP::ArraySource ss2(unicodePassword, password.size(), true,
+	CryptoPP::ArraySource ss2(unicodePassword, password.size() * 2, true,
 		new CryptoPP::StreamTransformationFilter(cfbEncryptor,
 			new CryptoPP::Base64Encoder(
 				new CryptoPP::StringSink(
