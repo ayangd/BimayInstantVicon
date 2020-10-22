@@ -3,13 +3,11 @@
 
 #include <cstdlib>
 #include <string>
+#include <locale>
+#include <codecvt>
 
 std::string wstrToStr(std::wstring wstr) {
-    std::string str;
-    for (auto it = wstr.begin(); it != wstr.end(); it++) {
-        str += (char) *it;
-    }
-    return str;
+    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(wstr);
 }
 
 // Define cross-platform macros
@@ -60,6 +58,7 @@ std::string promptPassword() {
 std::string getHomeDir() {
 	return std::string(getenv("HOME"));
 }
+
 void waitKeypress() {
     struct termios savedState, newState;
 
@@ -78,6 +77,7 @@ void waitKeypress() {
     /* restore the saved state */
     tcsetattr(STDIN_FILENO, TCSANOW, &savedState);
 }
+
 std::string promptPassword() {
     struct termios savedState, newState;
     tcgetattr(STDIN_FILENO, &savedState);
