@@ -17,7 +17,10 @@ std::string wstrToStr(std::wstring wstr) {
 #include <Windows.h>
 #include <ShlObj.h>
 
-#define _urlopen "start "
+void openurl(std::string url) {
+    ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+}
+
 std::string getHomeDir() {
 	wchar_t* dir = NULL;
 	SHGetKnownFolderPath(FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, NULL, &dir);
@@ -95,11 +98,11 @@ std::string promptPassword() {
     return password;
 }
 
-#endif
-
 void openurl(std::string url) {
-	std::string command = _urlopen + url;
-	system(command.c_str());
+    std::string command = _urlopen + url;
+    system(command.c_str());
 }
+
+#endif
 
 #endif //_BIMAY_INSTANT_VICON_MAIN_HPP

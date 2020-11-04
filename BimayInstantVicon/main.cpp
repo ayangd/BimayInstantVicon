@@ -134,6 +134,15 @@ bool timeInRange(std::tm t, std::tm tRanged, int secondOffset, int secondRange) 
 	return sec > secRanged + secondOffset && sec < secRanged + secondOffset + secondRange;
 }
 
+/* Convert browser link to zoom link */
+std::string getInstantLink(std::string& meetingLink) {
+	std::smatch sm;
+	std::regex_search(meetingLink, sm, std::regex("https://binus.zoom.us/j/(\\d+)\\?pwd=(.+)"));
+	std::stringstream outputStream;
+	outputStream << "zoommtg://zoom.us/join?action=join&confno=" << sm[1] << "&pwd=" << sm[2];
+	return outputStream.str();
+}
+
 // Just a simple XOR encryption, with Base64 encoding output.
 /* Encryption for Credentials */
 std::string encrypt(std::string& in) {
@@ -345,20 +354,6 @@ int main() {
 		}
 		cred.close();
 	}
-
-	// Check if NIM included
-	if (credential->nim.empty()) {
-		Credential* temp = promptCredential(false, true, false);
-		credential->nim = temp->nim;
-		delete temp;
-		std::ofstream cred(credFilename);
-		if (!cred) {
-			std::cout << "Can't save credential." << std::endl;
-			return -1;
-		}
-		saveCredential(cred, *credential);
-		cred.close();
-	}
 	
 	std::string credData = "Username=" + urlEncode(credential->username) + "&Password=" + urlEncode(credential->password);
 
@@ -436,11 +431,26 @@ int main() {
 
 		// Only match date, time range, and has meeting url
 		if (dateMatches(t, jd) && timeInRange(jt, t, -50 * 60, 90 * 60) && meetingUrl.compare("-") != 0) {
-			std::cout << "Opening \"" << meetingUrl << "\"...";
-			openurl(meetingUrl);
+			std::string instantLink = getInstantLink(meetingUrl);
+			std::cout << "Opening \"" << instantLink << "\"...";
+			openurl(instantLink);
 			std::cout << "Done." << std::endl;
 			if (std::regex_match(j["SsrComponentDescription"].get<std::string>(), std::regex(".*Laboratory"))) {
 				std::cout << "Lab class detected." << std::endl;
+
+				// Check if NIM included
+				if (credential->nim.empty()) {
+					Credential* temp = promptCredential(false, true, false);
+					credential->nim = temp->nim;
+					delete temp;
+					std::ofstream cred(credFilename);
+					if (!cred) {
+						std::cout << "Can't save credential." << std::endl;
+						return -1;
+					}
+					saveCredential(cred, *credential);
+					cred.close();
+				}
 
 				// Get salt
 				std::string nimstr = "\"" + credential->nim + "\"";
