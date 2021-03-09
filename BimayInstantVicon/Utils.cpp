@@ -13,6 +13,14 @@ namespace BimayInstantVicon {
         return str;
     }
 
+    std::string Utils::getInstantLink(std::string link) {
+        std::smatch sm;
+        std::regex_search(link, sm, std::regex("https://binus.zoom.us/j/(\\d+)\\?pwd=(.+)"));
+        std::stringstream outputStream;
+        outputStream << "zoommtg://zoom.us/join?action=join&confno=" << sm[1] << "&pwd=" << sm[2];
+        return outputStream.str();
+    }
+
 // Define cross-platform macros
 #if defined(_WIN32)       // Windows
     void Utils::openurl(std::string url) {
@@ -98,17 +106,26 @@ namespace BimayInstantVicon {
             curl_global_init(CURL_GLOBAL_ALL);
         }
         curl = curl_easy_init();
-        curl_easy_setopt(curl, CURLOPT_COOKIELIST, "");
-        curlCode = CURLE_OK;
+        if (curl == NULL) {
+            throw CurlException("Curl easy init failed.");
+        }
+        curlCode = curl_easy_setopt(curl, CURLOPT_COOKIELIST, "");
+        if (curlCode != CURLE_OK) {
+            throw CurlException("Curl cookie init failed.");
+        }
     }
 
-    void Curl::post(const char* url, const char* referer, const char* postFields, Callbacks writeCallback) {
-        post(url, referer, postFields, writeCallback, false);
+    Curl::~Curl() {
+        curl_easy_cleanup(curl);
     }
 
-    void Curl::post(const char* url, const char* referer, const char* postFields, Callbacks writeCallback, bool shouldSucceed) {
+    void Curl::post(const char* url, const char* referer, const char* postFields, Callbacks callbackOption) {
+        post(url, referer, postFields, callbackOption, false);
+    }
+
+    void Curl::post(const char* url, const char* referer, const char* postFields, Callbacks callbackOption, bool shouldSucceed) {
+        checkCleanedUp();
         curl_easy_reset(curl);
-        curl_easy_setopt(curl, CURLOPT_POST, 1);
         curl_easy_setopt(curl, CURLOPT_URL, url);
         if (referer != NULL) {
             curl_easy_setopt(curl, CURLOPT_REFERER, referer);
@@ -116,10 +133,13 @@ namespace BimayInstantVicon {
         if (postFields != NULL) {
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postFields);
         }
-        switch (writeCallback) {
+        else {
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        }
+        switch (callbackOption) {
         case Callbacks::CALLBACK_ENABLE:
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
             buffer.clear();
             break;
         case Callbacks::CALLBACK_VOID:
@@ -132,26 +152,29 @@ namespace BimayInstantVicon {
         if (shouldSucceed) {
             long respCode = getResponseCode();
             if (respCode != 200) {
-                throw CurlException(StringStreaming() << "cURL POST response code: " << respCode << StringStreaming::Stop());
+                std::stringstream ss;
+                ss << "cURL POST response code: " << respCode;
+                throw CurlException(ss.str());
             }
         }
     }
 
-    void Curl::get(const char* url, const char* referer, Callbacks writeCallback, bool shouldSucceed) {
-        get(url, referer, writeCallback, false);
+    void Curl::get(const char* url, const char* referer, Callbacks callbackOption) {
+        get(url, referer, callbackOption, false);
     }
 
-    void Curl::get(const char* url, const char* referer, Callbacks writeCallback, bool shouldSucceed) {
+    void Curl::get(const char* url, const char* referer, Callbacks callbackOption, bool shouldSucceed) {
+        checkCleanedUp(); 
         curl_easy_reset(curl);
-        curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
+        //curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
         curl_easy_setopt(curl, CURLOPT_URL, url);
         if (referer != NULL) {
             curl_easy_setopt(curl, CURLOPT_REFERER, referer);
         }
-        switch (writeCallback) {
+        switch (callbackOption) {
         case Callbacks::CALLBACK_ENABLE:
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
             buffer.clear();
             break;
         case Callbacks::CALLBACK_VOID:
@@ -164,12 +187,15 @@ namespace BimayInstantVicon {
         if (shouldSucceed) {
             long respCode = getResponseCode();
             if (respCode != 200) {
-                throw CurlException(StringStreaming() << "cURL GET response code: " << respCode << StringStreaming::Stop());
+                std::stringstream ss;
+                ss << "cURL GET response code: " << respCode;
+                throw CurlException(ss.str());
             }
         }
     }
 
     std::string Curl::urlEncode(std::string& str) {
+        checkCleanedUp(); 
         char* cstr = curl_easy_escape(curl, str.c_str(), 0);
         std::string s(cstr);
         curl_free(cstr);
@@ -177,6 +203,7 @@ namespace BimayInstantVicon {
     }
 
     long Curl::getResponseCode() {
+        checkCleanedUp(); 
         long respCode;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &respCode);
         return respCode;
@@ -205,6 +232,19 @@ namespace BimayInstantVicon {
         return std::string(curl_easy_strerror(curlCode));
     }
 
+    bool Curl::globalCleanedUp = false;
+
+    void Curl::checkCleanedUp() {
+        if (globalCleanedUp) {
+            throw CurlException("cURL has been cleaned up.");
+        }
+    }
+
+    void Curl::globalCleanup() {
+        curl_global_cleanup();
+        globalCleanedUp = true;
+    }
+
     Exception::Exception() {
         reason = "";
     }
@@ -222,7 +262,13 @@ namespace BimayInstantVicon {
     CurlException::CurlException(std::string reason) : Exception(reason) {}
 
     Time::Time() {
-        time = {};
+        time_t now = std::time(NULL);
+#ifdef _MSC_VER
+        localtime_s(&time, &now);
+#else
+        tm* tp = localtime(&date);
+        memcpy(tp, &time, sizeof(std::tm));
+#endif
     }
 
     Time* Time::getTimeFromEpoch(int64_t seconds) {
@@ -234,6 +280,7 @@ namespace BimayInstantVicon {
         tm* tp = localtime(&date);
         memcpy(tp, &t->time, sizeof(std::tm));
 #endif
+        return t;
     }
 
     Time* Time::getTimeFromJSON(std::string time) {
@@ -250,62 +297,40 @@ namespace BimayInstantVicon {
         return getTimeFromEpoch(std::stoll(sm[0]) / 1000);
     }
 
-    Time* Time::getCurrentTime() {
-        Time* t = new Time();
-        time_t now = std::time(NULL);
-#ifdef _MSC_VER
-        localtime_s(&t->time, &now);
-#else
-        tm* tp = localtime(&date);
-        memcpy(tp, &t->time, sizeof(std::tm));
-#endif
-    }
-
-    int Time::getSecond() {
+    int Time::getSecond() const {
         return time.tm_sec;
     }
 
-    int Time::getMinute() {
+    int Time::getMinute() const {
         return time.tm_min;
     }
 
-    int Time::getHour() {
+    int Time::getHour() const {
         return time.tm_hour;
     }
 
-    int Time::getDayOfMonth() {
+    int Time::getDayOfMonth() const {
         return time.tm_mday;
     }
 
-    int Time::getMonth() {
+    int Time::getMonth() const {
         return time.tm_mon;
     }
 
-    int Time::getYear() {
+    int Time::getYear() const {
         return time.tm_year;
     }
 
-    StringStreaming& StringStreaming::operator<<(const std::string s) {
-        ss << s;
-        return *this;
+    bool Time::isInRangeOf(const Time& reference, uint64_t referenceSecondMinus, uint64_t referenceSecondPlus) const {
+        uint64_t secondAccumulation = (uint64_t) getHour() * 3600 + getMinute() * 60 + getSecond();
+        uint64_t referenceSecondAccumulation = (uint64_t)reference.getHour() * 3600 + reference.getMinute() * 60 + reference.getSecond();
+        return secondAccumulation > referenceSecondAccumulation - referenceSecondMinus &&
+            secondAccumulation < referenceSecondAccumulation + referenceSecondPlus;
     }
 
-    StringStreaming& StringStreaming::operator<<(const char* c) {
-        ss << c;
-        return *this;
-    }
-
-    StringStreaming& StringStreaming::operator<<(const char c) {
-        ss << c;
-        return *this;
-    }
-
-    StringStreaming& StringStreaming::operator<<(const int i) {
-        ss << i;
-        return *this;
-    }
-
-    std::string StringStreaming::operator<<(Stop s) {
-        return ss.str();
+    bool Time::dateMatches(const Time& reference) const {
+        return getDayOfMonth() == reference.getDayOfMonth() &&
+            getMonth() == reference.getMonth() &&
+            getYear() == reference.getYear();
     }
 }

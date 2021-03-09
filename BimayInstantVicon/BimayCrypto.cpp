@@ -1,12 +1,12 @@
 #include "BimayCrypto.hpp"
 
-#include <hmac.h>
-#include <sha.h>
-#include <filters.h>
-#include <pwdbased.h>
-#include <modes.h>
-#include <aes.h>
-#include <base64.h>
+#include <crypto++/hmac.h>
+#include <crypto++/sha.h>
+#include <crypto++/filters.h>
+#include <crypto++/pwdbased.h>
+#include <crypto++/modes.h>
+#include <crypto++/aes.h>
+#include <crypto++/base64.h>
 
 namespace BimayInstantVicon {
 	std::string BimayCrypto::labPasswordEncrypt(std::string& username, std::string& password) {

@@ -11,15 +11,15 @@ namespace BimayInstantVicon {
 	{
 	private:
 		bool loggedIn;
-		Curl& curl;
+		Curl* curl;
 	public:
-		MyClassInterface(Curl& curl);
+		MyClassInterface(Curl* curl);
 		void login(std::string username, std::string password);
 		bool isLoggedIn();
 
 		class Schedule;
 
-		std::vector<Schedule> getSchedules();
+		std::vector<Schedule*>* getSchedules();
 
 		class Schedule
 		{
@@ -33,8 +33,8 @@ namespace BimayInstantVicon {
 			std::string deliveryMode;
 			std::string courseCode;
 			std::string courseTitle;
-			std::string week;
-			std::string session;
+			int week;
+			int session;
 			std::string meetingId;
 			std::string meetingPassword;
 			std::string url;
@@ -49,8 +49,8 @@ namespace BimayInstantVicon {
 				std::string deliveryMode,
 				std::string courseCode,
 				std::string courseTitle,
-				std::string week,
-				std::string session,
+				int week,
+				int session,
 				std::string meetingId,
 				std::string meetingPassword,
 				std::string url);
@@ -64,8 +64,8 @@ namespace BimayInstantVicon {
 			std::string getDeliveryMode();
 			std::string getCourseCode();
 			std::string getCourseTitle();
-			std::string getWeek();
-			std::string getSession();
+			int getWeek();
+			int getSession();
 			std::string getMeetingId();
 			std::string getMeetingPassword();
 			std::string getUrl();

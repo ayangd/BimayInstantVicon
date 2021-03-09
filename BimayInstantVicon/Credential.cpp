@@ -4,18 +4,8 @@ namespace BimayInstantVicon {
 	const char* Credential::encryptionPassphrase = "bimay";
 	const char* Credential::magic = "BimayCred";
 
-	Credential::Credential(std::string txtCred, CredentialFileType type) {
-		std::stringstream stream(txtCred);
-		this->type = type;
-		if (type == CredentialFileType::v1) {
-			std::getline(stream, this->username);
-			std::getline(stream, this->password);
-		}
-		else if (type == CredentialFileType::v2) {
-			std::getline(stream, this->username);
-			std::getline(stream, this->nim);
-			std::getline(stream, this->password);
-		}
+	Credential::Credential(std::string& txtCred, CredentialFileType type) {
+		parseRaw(txtCred, type);
 	}
 
 	Credential::Credential() {}
@@ -57,6 +47,20 @@ namespace BimayInstantVicon {
 		return std::string((char*)buf, totalPutLength);
 	}
 
+	void Credential::parseRaw(std::string& in, CredentialFileType type) {
+		std::stringstream stream(in);
+		this->type = type;
+		if (type == CredentialFileType::v1) {
+			std::getline(stream, this->username);
+			std::getline(stream, this->password);
+		}
+		else if (type == CredentialFileType::v2) {
+			std::getline(stream, this->username);
+			std::getline(stream, this->nim);
+			std::getline(stream, this->password);
+		}
+	}
+
 	void Credential::save(std::ostream& credFileStream) {
 		credFileStream << magic;
 		credFileStream << "v" << 2 << ":"; // Credential version 2
@@ -70,7 +74,7 @@ namespace BimayInstantVicon {
 		credFileStream << encrypt(credStr);
 	}
 
-	Credential* Credential::parse(std::istream& credFileStream) {
+	Credential::Credential(std::istream& credFileStream) {
 		credFileStream.seekg(0, credFileStream.end);
 		int size = (int)credFileStream.tellg();
 		credFileStream.seekg(0, credFileStream.beg);
@@ -92,14 +96,14 @@ namespace BimayInstantVicon {
 		if (!hasMagic) {
 			// File doesn't have magic. Read in plain text.
 			std::string credPlain(buf);
-			Credential* cred = new Credential(credPlain, CredentialFileType::Plain);
 			delete[] buf;
-			return cred;
+			parseRaw(credPlain, CredentialFileType::Plain);
+			return;
 		}
 
 		if (buf[i++] != 'v') { // Without v, it's illegal
 			delete[] buf;
-			return NULL;
+			throw CredentialParseException("Unknown Credential version.");
 		}
 		char number[16];
 		int numPos = 0;
@@ -112,17 +116,24 @@ namespace BimayInstantVicon {
 		if (atoi(number) == 1) {      // Version 1
 			std::string strbuf(buf + i);
 			delete[] buf;
-			return new Credential(decrypt(strbuf), CredentialFileType::v1);
+			std::string decryptString = decrypt(strbuf);
+			parseRaw(decryptString, CredentialFileType::v1);
+			return;
 		}
 		else if (atoi(number) == 2) { // Version 2
 			std::string strbuf(buf + i);
 			delete[] buf;
-			return new Credential(decrypt(strbuf), CredentialFileType::v2);
+			std::string decryptString = decrypt(strbuf);
+			parseRaw(decryptString, CredentialFileType::v2);
 		}
 		else {
 			// Illegal credential version for this program version.
 			delete[] buf;
-			return NULL;
+			throw CredentialParseException("Unsupported Credential version.");
 		}
 	}
+
+	CredentialParseException::CredentialParseException() : Exception() {}
+
+	CredentialParseException::CredentialParseException(std::string reason) : Exception(reason) {}
 }

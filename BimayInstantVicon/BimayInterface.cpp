@@ -5,16 +5,16 @@ using json = nlohmann::json;
 
 namespace BimayInstantVicon {
 	
-	MyClassInterface::MyClassInterface(Curl& curl)
-		: curl(curl)
+	MyClassInterface::MyClassInterface(Curl* curl)
 	{
+		this->curl = curl;
 		loggedIn = false;
 	}
 
 	void MyClassInterface::login(std::string username, std::string password) {
-		std::string credData = "Username=" + curl.urlEncode(username) + "&Password=" + curl.urlEncode(password);
-		curl.post("https://myclass.apps.binus.ac.id/Auth/Login", "https://myclass.apps.binus.ac.id/Auth", credData.c_str(), Curl::Callbacks::CALLBACK_ENABLE, true);
-		json loginResponse = json::parse(curl.getBuffer());
+		std::string credData = "Username=" + curl->urlEncode(username) + "&Password=" + curl->urlEncode(password);
+		curl->post("https://myclass.apps.binus.ac.id/Auth/Login", "https://myclass.apps.binus.ac.id/Auth", credData.c_str(), Curl::Callbacks::CALLBACK_ENABLE, true);
+		json loginResponse = json::parse(curl->getBuffer());
 		if (loginResponse["Status"]) {
 			loggedIn = true;
 		}
@@ -24,13 +24,13 @@ namespace BimayInstantVicon {
 		return loggedIn;
 	}
 
-	std::vector<MyClassInterface::Schedule> MyClassInterface::getSchedules() {
-		curl.get("https://myclass.apps.binus.ac.id/Home/GetViconSchedule", "https://myclass.apps.binus.ac.id/Home/Index", Curl::Callbacks::CALLBACK_ENABLE);
-		json schedules = json::parse(curl.getBuffer());
-		std::vector<MyClassInterface::Schedule> scheduleVector;
+	std::vector<MyClassInterface::Schedule*>* MyClassInterface::getSchedules() {
+		curl->get("https://myclass.apps.binus.ac.id/Home/GetViconSchedule", "https://myclass.apps.binus.ac.id/Home/Index", Curl::Callbacks::CALLBACK_ENABLE);
+		json schedules = json::parse(curl->getBuffer());
+		std::vector<MyClassInterface::Schedule*>* scheduleVector = new std::vector<MyClassInterface::Schedule*>();
 		for (json schedule : schedules) {
-			scheduleVector.push_back(
-				MyClassInterface::Schedule(
+			scheduleVector->push_back(
+				new MyClassInterface::Schedule(
 					Time::getDateFromJSON(schedule["StartDate"].get<std::string>()),
 					Time::getTimeFromJSON(schedule["StartTime"].get<std::string>()),
 					Time::getTimeFromJSON(schedule["EndTime"].get<std::string>()),
@@ -40,8 +40,8 @@ namespace BimayInstantVicon {
 					schedule["DeliveryMode"].get<std::string>(),
 					schedule["CourseCode"].get<std::string>(),
 					schedule["CourseTitleEn"].get<std::string>(),
-					schedule["WeekSession"].get<std::string>(),
-					schedule["CourseSessionNumber"].get<std::string>(),
+					schedule["WeekSession"].get<int>(),
+					schedule["CourseSessionNumber"].get<int>(),
 					schedule["MeetingId"].get<std::string>(),
 					schedule["MeetingPassword"].get<std::string>(),
 					schedule["MeetingUrl"].get<std::string>()
@@ -61,8 +61,8 @@ namespace BimayInstantVicon {
 		std::string deliveryMode,
 		std::string courseCode,
 		std::string courseTitle,
-		std::string week,
-		std::string session,
+		int week,
+		int session,
 		std::string meetingId,
 		std::string meetingPassword,
 		std::string url)
@@ -125,11 +125,11 @@ namespace BimayInstantVicon {
 		return courseTitle;
 	}
 
-	std::string MyClassInterface::Schedule::getWeek() {
+	int MyClassInterface::Schedule::getWeek() {
 		return week;
 	}
 
-	std::string MyClassInterface::Schedule::getSession() {
+	int MyClassInterface::Schedule::getSession() {
 		return session;
 	}
 

@@ -27,6 +27,7 @@ namespace BimayInstantVicon {
 	{
 	public:
 		static std::string wstrToStr(std::wstring wstr);
+		static std::string getInstantLink(std::string link);
 		static void openurl(std::string url);
 
 		static std::string getHomeDir();
@@ -40,19 +41,22 @@ namespace BimayInstantVicon {
 		CURL* curl;
 		CURLcode curlCode;
 		std::string buffer;
+		static bool globalCleanedUp;
+		static void checkCleanedUp();
 
-		static size_t writeCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
-		static size_t voidWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
+		static size_t _cdecl writeCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
+		static size_t _cdecl voidWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
 	public:
 		enum class Callbacks
 		{
 			CALLBACK_ENABLE, CALLBACK_VOID
 		};
 		Curl();
-		void post(const char* url, const char* referer, const char* postFields, Callbacks writeCallback, bool shouldSucceed);
-		void post(const char* url, const char* referer, const char* postFields, Callbacks writeCallback);
-		void get(const char* url, const char* referer, Callbacks writeCallback, bool shouldSucceed);
-		void get(const char* url, const char* referer, Callbacks writeCallback);
+		~Curl();
+		void post(const char* url, const char* referer, const char* postFields, Callbacks callbackOption, bool shouldSucceed);
+		void post(const char* url, const char* referer, const char* postFields, Callbacks callbackOption);
+		void get(const char* url, const char* referer, Callbacks callbackOption, bool shouldSucceed);
+		void get(const char* url, const char* referer, Callbacks callbackOption);
 
 		long getResponseCode();
 		std::string& getBuffer();
@@ -60,6 +64,7 @@ namespace BimayInstantVicon {
 		std::string urlEncode(std::string& str);
 		CURLcode getError();
 		std::string getErrorMessage();
+		static void globalCleanup();
 	};
 
 	class Exception {
@@ -81,30 +86,19 @@ namespace BimayInstantVicon {
 	{
 	private:
 		std::tm time;
-		Time();
 	public:
+		Time();
 		static Time* getTimeFromEpoch(int64_t seconds);
 		static Time* getTimeFromJSON(std::string time);
 		static Time* getDateFromJSON(std::string date);
-		static Time* getCurrentTime();
-		int getSecond();
-		int getMinute();
-		int getHour();
-		int getDayOfMonth();
-		int getMonth();
-		int getYear();
-	};
-
-	class StringStreaming {
-	private:
-		std::stringstream ss;
-	public:
-		class Stop {};
-		StringStreaming& operator<<(const std::string s);
-		StringStreaming& operator<<(const char* c);
-		StringStreaming& operator<<(const char c);
-		StringStreaming& operator<<(const int i);
-		std::string operator<<(Stop s);
+		int getSecond() const;
+		int getMinute() const;
+		int getHour() const;
+		int getDayOfMonth() const;
+		int getMonth() const;
+		int getYear() const;
+		bool isInRangeOf(const Time& reference, uint64_t referenceSecondMinus, uint64_t referenceSecondPlus) const;
+		bool dateMatches(const Time& reference) const;
 	};
 }
 

@@ -3,8 +3,11 @@
 
 #include <string>
 #include <sstream>
-#include <base64.h>
-#include <filters.h>
+#include <memory>
+#include <crypto++/base64.h>
+#include <crypto++/filters.h>
+
+#include "Utils.hpp"
 
 namespace BimayInstantVicon {
 	enum class CredentialFileType {
@@ -18,16 +21,22 @@ namespace BimayInstantVicon {
 		static std::string decrypt(std::string& in);
 		static const char* encryptionPassphrase;
 		static const char* magic;
+		void parseRaw(std::string& in, CredentialFileType type);
 	public:
 		std::string username;
 		std::string nim;
 		std::string password;
 		CredentialFileType type;
-		Credential(std::string txtCred, CredentialFileType type);
+		Credential(std::string& txtCred, CredentialFileType type);
+		Credential(std::istream& credFileStream);
 		Credential();
 		void save(std::ostream& credFileStream);
+	};
 
-		static Credential* parse(std::istream& credFileStream);
+	class CredentialParseException : public Exception {
+	public:
+		CredentialParseException();
+		CredentialParseException(std::string reason);
 	};
 
 }
