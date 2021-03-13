@@ -1,11 +1,11 @@
 CC   = g++
 IDIR = include
-ODIR = obj
+ODIR = BimayInstantVicon
 SDIR = BimayInstantVicon
 STD  = c++17
 LIBS = -lcurl -lcryptopp
 
-_OBJ = BimayCrypto BimayInterface Credential main Utils
+_OBJ = BimayInterface Credential main Utils
 OBJ  = $(patsubst %,$(ODIR)/%.o,$(_OBJ))
 
 $(ODIR)/%.o: $(SDIR)/%.cpp

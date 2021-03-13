@@ -150,14 +150,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Credential.cpp" />
-    <ClCompile Include="BimayCrypto.cpp" />
     <ClCompile Include="BimayInterface.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Credential.hpp" />
-    <ClInclude Include="BimayCrypto.hpp" />
     <ClInclude Include="BimayInterface.hpp" />
     <ClInclude Include="Utils.hpp" />
   </ItemGroup>

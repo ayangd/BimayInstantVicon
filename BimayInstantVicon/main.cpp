@@ -3,7 +3,6 @@
 #include <fstream>
 #include <vector>
 
-#include "BimayCrypto.hpp"
 #include "BimayInterface.hpp"
 #include "Credential.hpp"
 #include "Utils.hpp"
