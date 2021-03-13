@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <ctime>
 #include <curl/curl.h>
 
 #if defined(_WIN32)
@@ -44,8 +45,8 @@ namespace BimayInstantVicon {
 		static bool globalCleanedUp;
 		static void checkCleanedUp();
 
-		static size_t _cdecl writeCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
-		static size_t _cdecl voidWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
+		static size_t writeCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
+		static size_t voidWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata);
 	public:
 		enum class Callbacks
 		{

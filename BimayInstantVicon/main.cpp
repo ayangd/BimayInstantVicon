@@ -1,39 +1,3 @@
-/*
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <regex>
-#include <vector>
-#include <chrono>
-#include <ctime>
-#include <curl/curl.h>
-#include <nlohmann/json.hpp>
-#include <filesystem>
-#include <codecvt>
-#ifdef _MSC_VER
-#include <base64.h>
-#include <filters.h>
-#include <hmac.h>
-#include <sha.h>
-#include <hex.h>
-#include <pwdbased.h>
-#include <modes.h>
-#include <aes.h>
-#else
-#include <crypto++/base64.h>
-#include <crypto++/filters.h>
-#include <crypto++/hmac.h>
-#include <crypto++/sha.h>
-#include <crypto++/hex.h>
-#include <crypto++/pwdbased.h>
-#include <crypto++/modes.h>
-#include <crypto++/aes.h>
-#endif
-*/
-
-//#include "main.hpp"
-
 #include <string>
 #include <filesystem>
 #include <fstream>

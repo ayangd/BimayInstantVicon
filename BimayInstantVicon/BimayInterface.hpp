@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <ctime>
 #include "Utils.hpp"
 
 namespace BimayInstantVicon {

@@ -1,4 +1,20 @@
-CC=g++
+CC   = g++
+IDIR = include
+ODIR = obj
+SDIR = BimayInstantVicon
+STD  = c++17
+LIBS = -lcurl -lcryptopp
 
-all: BimayInstantVicon/main.cpp BimayInstantVicon/main.hpp
-	$(CC) -std=c++17 -Iinclude/ -lcurl -lcryptopp BimayInstantVicon/main.cpp -o bimayinstv -lstdc++fs
+_OBJ = BimayCrypto BimayInterface Credential main Utils
+OBJ  = $(patsubst %,$(ODIR)/%.o,$(_OBJ))
+
+$(ODIR)/%.o: $(SDIR)/%.cpp
+	$(CC) -std=$(STD) -O2 -c -o $@ $< -I$(IDIR)
+
+all: $(OBJ)
+	$(CC) $(LIBS) $(OBJ) -o bimayinstv -lstdc++fs
+
+.PHONY: clean
+
+clean:
+	rm -f $(ODIR)/*.o bimayinstv

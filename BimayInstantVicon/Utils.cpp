@@ -266,7 +266,7 @@ namespace BimayInstantVicon {
 #ifdef _MSC_VER
         localtime_s(&time, &now);
 #else
-        tm* tp = localtime(&date);
+        tm* tp = localtime(&now);
         memcpy(tp, &time, sizeof(std::tm));
 #endif
     }
