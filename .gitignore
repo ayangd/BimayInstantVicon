@@ -369,6 +369,7 @@ bimayinstv
 autom4te.cache
 config.cache
 config.h
+!include/*config.h
 config.intl
 config.log
 config.status
