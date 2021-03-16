@@ -19,7 +19,7 @@ namespace BimayInstantVicon {
 		static std::string encrypt(std::string& in);
 		static std::string decrypt(std::string& in);
 		static const char* encryptionPassphrase;
-		static const char* magic;
+		static const std::string magic;
 		void parseRaw(std::string& in, CredentialFileType type);
 	public:
 		std::string username;

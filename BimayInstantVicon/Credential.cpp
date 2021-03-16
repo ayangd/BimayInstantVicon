@@ -2,7 +2,7 @@
 
 namespace BimayInstantVicon {
 	const char* Credential::encryptionPassphrase = "bimay";
-	const char* Credential::magic = "BimayCred";
+	const std::string Credential::magic = "BimayCred";
 
 	Credential::Credential(std::string& txtCred, CredentialFileType type) {
 		parseRaw(txtCred, type);
@@ -60,61 +60,47 @@ namespace BimayInstantVicon {
 	}
 
 	Credential::Credential(std::istream& credFileStream) {
-		credFileStream.seekg(0, credFileStream.end);
-		int size = (int)credFileStream.tellg();
-		credFileStream.seekg(0, credFileStream.beg);
-		char* buf = new char[size + 1]; // +1 for null at the back
-		credFileStream.read(buf, size);
-		buf[size] = 0;                  // Null terminate the string
-		int i = 0;
+		char buf[1024];
 
 		// Check for magic
-		bool hasMagic = true;
-		while (buf[i] != 0 && magic[i] != 0) {
-			if (buf[i] != magic[i]) {
-				hasMagic = false;
-				break;
-			}
-			i++;
-		}
+		credFileStream.read(buf, magic.size());
+		bool hasMagic = magic.compare(0, magic.size(), buf) == 0;
 
 		if (!hasMagic) {
 			// File doesn't have magic. Read in plain text.
-			std::string credPlain(buf);
-			delete[] buf;
+			credFileStream.seekg(0, std::ios_base::beg);
+			std::string credPlain(std::istreambuf_iterator<char>(credFileStream), {});
 			parseRaw(credPlain, CredentialFileType::Plain);
 			return;
 		}
 
-		if (buf[i++] != 'v') { // Without v, it's illegal
-			delete[] buf;
-			throw CredentialParseException("Unknown Credential version.");
+		char vChar;
+		credFileStream >> vChar;
+		if (vChar != 'v') { // Without v, it's illegal
+			throw CredentialParseException("Illegal format: Expected v after magic.");
 		}
-		char number[16];
-		int numPos = 0;
-		while (buf[i] != ':') {
-			number[numPos++] = buf[i++];
-		}
-		number[numPos] = 0;    // Null terminate
-		i++;                   // Skip colon
+		int version;
+		credFileStream >> version;
 
-		if (atoi(number) == 1) {      // Version 1
-			std::string strbuf(buf + i);
-			delete[] buf;
-			std::string decryptString = decrypt(strbuf);
-			parseRaw(decryptString, CredentialFileType::v1);
-			return;
+		char colon;
+		credFileStream >> colon;
+		if (colon != ':') {
+			throw CredentialParseException("Illegal format: Expected a colon after number version.");
 		}
-		else if (atoi(number) == 2) { // Version 2
-			std::string strbuf(buf + i);
-			delete[] buf;
-			std::string decryptString = decrypt(strbuf);
-			parseRaw(decryptString, CredentialFileType::v2);
+
+		static constexpr CredentialFileType credVersionArray[] = {
+			CredentialFileType::Plain /* Unused */,
+			CredentialFileType::v1,
+			CredentialFileType::v2
+		};
+		if (version >= 1 && version <= 2) {
+			std::string base64str(std::istreambuf_iterator<char>(credFileStream), {});
+			std::string decryptString = decrypt(base64str);
+			parseRaw(decryptString, credVersionArray[version]);
 		}
 		else {
 			// Illegal credential version for this program version.
-			delete[] buf;
-			throw CredentialParseException("Unsupported Credential version.");
+			throw CredentialParseException("Unsupported version.");
 		}
 	}
 

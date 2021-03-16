@@ -17,9 +17,9 @@ void checkCredentialChange(bool* changed, const std::string& filename, Credentia
 		}
 		else {
 			credential->save(cred);
-			cred.close();
 			*changed = false;
 		}
+		cred.close();
 	}
 }
 
@@ -53,7 +53,11 @@ int main() {
 			credential = new Credential(cred);
 		}
 		catch (CredentialParseException e) {
-			std::cout << "Parsing failed: " << e.getReason() << std::endl;
+			std::cout << "Credential parsing failed: " << e.getReason() << std::endl;
+			credential = new Credential();
+		}
+		catch (std::runtime_error e) {
+			std::cout << "Credential parsing failed: " << e.what() << std::endl;
 			credential = new Credential();
 		}
 		cred.close();
