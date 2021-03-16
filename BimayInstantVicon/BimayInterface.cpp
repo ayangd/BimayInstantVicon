@@ -11,7 +11,7 @@ namespace BimayInstantVicon {
 		loggedIn = false;
 	}
 
-	void MyClassInterface::login(std::string username, std::string password) {
+	void MyClassInterface::login(const std::string& username, const std::string& password) {
 		std::string credData = "Username=" + curl->urlEncode(username) + "&Password=" + curl->urlEncode(password);
 		curl->post("https://myclass.apps.binus.ac.id/Auth/Login", "https://myclass.apps.binus.ac.id/Auth", credData.c_str(), Curl::Callbacks::CALLBACK_ENABLE, true);
 		json loginResponse = json::parse(curl->getBuffer());
@@ -20,7 +20,7 @@ namespace BimayInstantVicon {
 		}
 	}
 
-	bool MyClassInterface::isLoggedIn() {
+	bool MyClassInterface::isLoggedIn() const {
 		return loggedIn;
 	}
 
@@ -89,64 +89,64 @@ namespace BimayInstantVicon {
 		delete endTime;
 	}
 
-	Time* MyClassInterface::Schedule::getDate() {
+	Time* MyClassInterface::Schedule::getDate() const {
 		return date;
 	}
 
-	Time* MyClassInterface::Schedule::getStartTime() {
+	Time* MyClassInterface::Schedule::getStartTime() const {
 		return startTime;
 	}
 
-	Time* MyClassInterface::Schedule::getEndTime() {
+	Time* MyClassInterface::Schedule::getEndTime() const {
 		return endTime;
 	}
 
-	std::string MyClassInterface::Schedule::getClassCode() {
+	std::string MyClassInterface::Schedule::getClassCode() const {
 		return classCode;
 	}
 
-	std::string MyClassInterface::Schedule::getRoom() {
+	std::string MyClassInterface::Schedule::getRoom() const {
 		return room;
 	}
 
-	std::string MyClassInterface::Schedule::getCampus() {
+	std::string MyClassInterface::Schedule::getCampus() const {
 		return campus;
 	}
 
-	std::string MyClassInterface::Schedule::getDeliveryMode() {
+	std::string MyClassInterface::Schedule::getDeliveryMode() const {
 		return deliveryMode;
 	}
 
-	std::string MyClassInterface::Schedule::getCourseCode() {
+	std::string MyClassInterface::Schedule::getCourseCode() const {
 		return courseCode;
 	}
 
-	std::string MyClassInterface::Schedule::getCourseTitle() {
+	std::string MyClassInterface::Schedule::getCourseTitle() const {
 		return courseTitle;
 	}
 
-	int MyClassInterface::Schedule::getWeek() {
+	int MyClassInterface::Schedule::getWeek() const {
 		return week;
 	}
 
-	int MyClassInterface::Schedule::getSession() {
+	int MyClassInterface::Schedule::getSession() const {
 		return session;
 	}
 
-	std::string MyClassInterface::Schedule::getMeetingId() {
+	std::string MyClassInterface::Schedule::getMeetingId() const {
 		return meetingId;
 	}
 
-	std::string MyClassInterface::Schedule::getMeetingPassword() {
+	std::string MyClassInterface::Schedule::getMeetingPassword() const {
 		return meetingPassword;
 	}
 
-	std::string MyClassInterface::Schedule::getUrl() {
+	std::string MyClassInterface::Schedule::getUrl() const {
 		return url;
 	}
 
 	LoginException::LoginException() : Exception() {}
 
-	LoginException::LoginException(std::string reason) : Exception(reason) {}
+	LoginException::LoginException(const std::string& reason) : Exception(reason) {}
 
 }

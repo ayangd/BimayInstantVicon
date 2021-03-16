@@ -15,8 +15,8 @@ namespace BimayInstantVicon {
 		Curl* curl;
 	public:
 		MyClassInterface(Curl* curl);
-		void login(std::string username, std::string password);
-		bool isLoggedIn();
+		void login(const std::string& username, const std::string& password);
+		bool isLoggedIn() const;
 
 		class Schedule;
 
@@ -56,27 +56,27 @@ namespace BimayInstantVicon {
 				std::string meetingPassword,
 				std::string url);
 			~Schedule();
-			Time* getDate();
-			Time* getStartTime();
-			Time* getEndTime();
-			std::string getClassCode();
-			std::string getRoom();
-			std::string getCampus();
-			std::string getDeliveryMode();
-			std::string getCourseCode();
-			std::string getCourseTitle();
-			int getWeek();
-			int getSession();
-			std::string getMeetingId();
-			std::string getMeetingPassword();
-			std::string getUrl();
+			Time* getDate() const;
+			Time* getStartTime() const;
+			Time* getEndTime() const;
+			std::string getClassCode() const;
+			std::string getRoom() const;
+			std::string getCampus() const;
+			std::string getDeliveryMode() const;
+			std::string getCourseCode() const;
+			std::string getCourseTitle() const;
+			int getWeek() const;
+			int getSession() const;
+			std::string getMeetingId() const;
+			std::string getMeetingPassword() const;
+			std::string getUrl() const;
 		};
 	};
 
 	class LoginException : public Exception {
 	public:
 		LoginException();
-		LoginException(std::string reason);
+		LoginException(const std::string& reason);
 	};
 
 }

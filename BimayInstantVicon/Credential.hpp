@@ -35,7 +35,7 @@ namespace BimayInstantVicon {
 	class CredentialParseException : public Exception {
 	public:
 		CredentialParseException();
-		CredentialParseException(std::string reason);
+		CredentialParseException(const std::string& reason);
 	};
 
 }

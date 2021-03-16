@@ -5,7 +5,7 @@
 
 namespace BimayInstantVicon {
 
-    std::string Utils::wstrToStr(std::wstring wstr) {
+    std::string Utils::wstrToStr(const std::wstring& wstr) {
         std::string str;
         for (auto it = wstr.begin(); it != wstr.end(); it++) {
             str += (char)*it;
@@ -13,7 +13,7 @@ namespace BimayInstantVicon {
         return str;
     }
 
-    std::string Utils::getInstantLink(std::string link) {
+    std::string Utils::getInstantLink(const std::string& link) {
         std::smatch sm;
         std::regex_search(link, sm, std::regex("https://binus.zoom.us/j/(\\d+)\\?pwd=(.+)"));
         std::stringstream outputStream;
@@ -23,7 +23,7 @@ namespace BimayInstantVicon {
 
 // Define cross-platform macros
 #if defined(_WIN32)       // Windows
-    void Utils::openurl(std::string url) {
+    void Utils::openurl(const std::string& url) {
         ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
     }
 
@@ -93,7 +93,7 @@ namespace BimayInstantVicon {
         return password;
     }
 
-    void Utils::openurl(std::string url) {
+    void Utils::openurl(const std::string& url) {
         std::string command = _urlopen + url;
         system(command.c_str());
     }
@@ -194,7 +194,7 @@ namespace BimayInstantVicon {
         }
     }
 
-    std::string Curl::urlEncode(std::string& str) {
+    std::string Curl::urlEncode(const std::string& str) {
         checkCleanedUp(); 
         char* cstr = curl_easy_escape(curl, str.c_str(), 0);
         std::string s(cstr);
@@ -202,7 +202,7 @@ namespace BimayInstantVicon {
         return s;
     }
 
-    long Curl::getResponseCode() {
+    long Curl::getResponseCode() const {
         checkCleanedUp(); 
         long respCode;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &respCode);
@@ -224,11 +224,11 @@ namespace BimayInstantVicon {
         return size * nmemb;
     }
 
-    CURLcode Curl::getError() {
+    CURLcode Curl::getError() const {
         return curlCode;
     }
 
-    std::string Curl::getErrorMessage() {
+    std::string Curl::getErrorMessage() const {
         return std::string(curl_easy_strerror(curlCode));
     }
 
@@ -249,7 +249,7 @@ namespace BimayInstantVicon {
         reason = "";
     }
 
-    Exception::Exception(std::string reason) {
+    Exception::Exception(const std::string& reason) {
         this->reason = reason;
     }
 
@@ -259,7 +259,7 @@ namespace BimayInstantVicon {
 
     CurlException::CurlException() : Exception() {}
 
-    CurlException::CurlException(std::string reason) : Exception(reason) {}
+    CurlException::CurlException(const std::string& reason) : Exception(reason) {}
 
     Time::Time() {
         time_t now = std::time(NULL);
@@ -283,7 +283,7 @@ namespace BimayInstantVicon {
         return t;
     }
 
-    Time* Time::getTimeFromJSON(std::string time) {
+    Time* Time::getTimeFromJSON(const std::string& time) {
         Time* t = new Time();
         std::smatch sm;
         std::regex_search(time, sm, std::regex("(\\d{2}):(\\d{2}):(\\d{2})"));
@@ -291,7 +291,7 @@ namespace BimayInstantVicon {
         return t;
     }
 
-    Time* Time::getDateFromJSON(std::string date) {
+    Time* Time::getDateFromJSON(const std::string& date) {
         std::smatch sm;
         std::regex_search(date, sm, std::regex("\\d+"));
         return getTimeFromEpoch(std::stoll(sm[0]) / 1000);

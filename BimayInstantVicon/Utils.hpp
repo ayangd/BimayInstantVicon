@@ -27,9 +27,9 @@ namespace BimayInstantVicon {
 	class Utils
 	{
 	public:
-		static std::string wstrToStr(std::wstring wstr);
-		static std::string getInstantLink(std::string link);
-		static void openurl(std::string url);
+		static std::string wstrToStr(const std::wstring& wstr);
+		static std::string getInstantLink(const std::string& link);
+		static void openurl(const std::string& url);
 
 		static std::string getHomeDir();
 		static void waitKeypress();
@@ -59,12 +59,12 @@ namespace BimayInstantVicon {
 		void get(const char* url, const char* referer, Callbacks callbackOption, bool shouldSucceed);
 		void get(const char* url, const char* referer, Callbacks callbackOption);
 
-		long getResponseCode();
+		long getResponseCode() const;
 		std::string& getBuffer();
 
-		std::string urlEncode(std::string& str);
-		CURLcode getError();
-		std::string getErrorMessage();
+		std::string urlEncode(const std::string& str);
+		CURLcode getError() const;
+		std::string getErrorMessage() const;
 		static void globalCleanup();
 	};
 
@@ -73,14 +73,14 @@ namespace BimayInstantVicon {
 		std::string reason;
 	public:
 		Exception();
-		Exception(std::string reason);
+		Exception(const std::string& reason);
 		std::string getReason();
 	};
 
 	class CurlException : public Exception {
 	public:
 		CurlException();
-		CurlException(std::string reason);
+		CurlException(const std::string& reason);
 	};
 
 	class Time
@@ -90,8 +90,8 @@ namespace BimayInstantVicon {
 	public:
 		Time();
 		static Time* getTimeFromEpoch(int64_t seconds);
-		static Time* getTimeFromJSON(std::string time);
-		static Time* getDateFromJSON(std::string date);
+		static Time* getTimeFromJSON(const std::string& time);
+		static Time* getDateFromJSON(const std::string& date);
 		int getSecond() const;
 		int getMinute() const;
 		int getHour() const;

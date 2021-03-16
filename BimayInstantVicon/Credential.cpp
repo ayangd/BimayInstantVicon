@@ -8,7 +8,9 @@ namespace BimayInstantVicon {
 		parseRaw(txtCred, type);
 	}
 
-	Credential::Credential() {}
+	Credential::Credential() {
+		type = CredentialFileType::Plain; // Not really important, just avoiding warnings
+	}
 
 	// Just a simple XOR encryption, with Base64 encoding output.
 	/* Encryption for Credentials */
@@ -106,5 +108,5 @@ namespace BimayInstantVicon {
 
 	CredentialParseException::CredentialParseException() : Exception() {}
 
-	CredentialParseException::CredentialParseException(std::string reason) : Exception(reason) {}
+	CredentialParseException::CredentialParseException(const std::string& reason) : Exception(reason) {}
 }
