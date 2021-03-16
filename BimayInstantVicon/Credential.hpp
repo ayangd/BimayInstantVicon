@@ -4,8 +4,7 @@
 #include <string>
 #include <sstream>
 #include <memory>
-#include <crypto++/base64.h>
-#include <crypto++/filters.h>
+#include <base64.h>
 
 #include "Utils.hpp"
 

@@ -38,11 +38,11 @@ Compilation from Dev-C++ is not supported as it uses old MinGW compiler. It's be
 
 ### Linux/MacOS
 
-Minimal GCC version should be GCC 5, as specified [here](https://gcc.gnu.org/projects/cxx-status.html#cxx17). You would also need libcurl and libcrypto++ library for compilation.
+Minimal GCC version should be GCC 5, as specified [here](https://gcc.gnu.org/projects/cxx-status.html#cxx17). You would also need libcurl for compilation.
 
-Installation of libcurl and libcrypto++ can be as this example, in Debian Linux distros (like Ubuntu and Mint)
+Installation of libcurl can be as this example, in Debian Linux distros (like Ubuntu and Mint)
 
-    sudo apt install libcurl4-openssl-dev libcrypto++-dev
+    sudo apt install libcurl4-openssl-dev
 
 After everyting is satisfied, just run:
 

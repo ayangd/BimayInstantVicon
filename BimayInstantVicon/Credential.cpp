@@ -13,38 +13,23 @@ namespace BimayInstantVicon {
 	// Just a simple XOR encryption, with Base64 encoding output.
 	/* Encryption for Credentials */
 	std::string Credential::encrypt(std::string& in) {
-		uint8_t* buf = new uint8_t[in.size()];
+		std::string encrypted;
 		int i = 0;
-		for (auto it = in.begin(); it != in.end(); it++) {
-			buf[i] = (uint8_t)(*it ^ encryptionPassphrase[i % (sizeof(encryptionPassphrase) - 1)]);
-			i++;
+		for (auto c = in.begin(); c != in.end(); c++, i++) {
+			encrypted.push_back(*c ^ encryptionPassphrase[i % (sizeof(encryptionPassphrase) - 1)]);
 		}
-		std::string out;
-		CryptoPP::ArraySource vs(buf, in.size(), true,
-			new CryptoPP::Base64Encoder(
-				new CryptoPP::StringSink(out)
-			)
-		);
-		delete[] buf;
-		return out;
+		return base64_encode_mime(encrypted);
 	}
 
 	/* Decryption for Credentials */
 	std::string Credential::decrypt(std::string& in) {
-		uint8_t buf[1024];
-		CryptoPP::ArraySink as(buf, 1024);
-		CryptoPP::StringSource ss(in, true,
-			new CryptoPP::Base64Decoder(
-				new CryptoPP::Redirector(
-					as
-				)
-			)
-		);
-		int totalPutLength = as.TotalPutLength();
-		for (int i = 0; i < totalPutLength; i++) {
-			buf[i] ^= encryptionPassphrase[i % (sizeof(encryptionPassphrase) - 1)];
+		std::string decoded = base64_decode(in, true);
+		std::string unencrypted;
+		int i = 0;
+		for (auto c = decoded.begin(); c != decoded.end(); c++, i++) {
+			unencrypted.push_back(*c ^ encryptionPassphrase[i % (sizeof(encryptionPassphrase) - 1)]);
 		}
-		return std::string((char*)buf, totalPutLength);
+		return unencrypted;
 	}
 
 	void Credential::parseRaw(std::string& in, CredentialFileType type) {
