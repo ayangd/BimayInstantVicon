@@ -14,7 +14,6 @@ You can open the releases from [here](https://github.com/ayangd/BimayInstantVico
 If you are using the program for the first time, input your credential.
 
     Username: <Your bimay name, without @binus.ac.id>
-    NIM: <Your NIM, for lab login>
     Password: <Your bimay password, won't be shown on screen upon typing>
 
 Your credential will be saved at `%APPDATA%\BimayInstantVicon\cred.txt`.  
