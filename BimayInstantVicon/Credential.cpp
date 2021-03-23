@@ -62,11 +62,11 @@ namespace BimayInstantVicon {
 	}
 
 	Credential::Credential(std::istream& credFileStream) {
-		char buf[1024];
+		std::string magicCheck(magic.size(), ' ');
 
 		// Check for magic
-		credFileStream.read(buf, magic.size());
-		bool hasMagic = magic.compare(0, magic.size(), buf) == 0;
+		credFileStream.read(&magicCheck[0], magic.size());
+		bool hasMagic = magic.compare(magicCheck) == 0;
 
 		if (!hasMagic) {
 			// File doesn't have magic. Read in plain text.

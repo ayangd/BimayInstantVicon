@@ -11,15 +11,17 @@ using namespace BimayInstantVicon;
 
 void checkCredentialChange(bool* changed, const std::string& filename, Credential* credential) {
 	if (*changed) {
-		std::ofstream cred(filename);
-		if (cred.fail()) {
-			std::cout << "Can't save credential file!" << std::endl;
-		}
-		else {
+		try {
+			std::ofstream cred;
+			cred.exceptions(std::ofstream::badbit);
+			cred.open(filename);
 			credential->save(cred);
 			*changed = false;
+			cred.close();
 		}
-		cred.close();
+		catch (std::ofstream::failure& f) {
+			std::cout << "Credential I/O failure: " << f.what() << std::endl;
+		}
 	}
 }
 
@@ -40,27 +42,30 @@ int main() {
 	// Check if credential exists
 	if (!std::filesystem::exists(credFilename)) {
 		// Credential not found
+		std::cout << "Local credential not found. Creating one." << std::endl;
 		credential = new Credential();
 	}
 	else {
 		// Credential found
-		std::ifstream cred(credFilename);
-		if (cred.fail()) {
-			std::cout << "Can't load credential file!" << std::endl;
-			return -1;
-		}
 		try {
+			std::ifstream cred;
+			cred.exceptions(std::ifstream::failbit);
+			cred.open(credFilename);
 			credential = new Credential(cred);
+			cred.close();
 		}
-		catch (CredentialParseException e) {
+		catch (CredentialParseException& e) {
 			std::cout << "Credential parsing failed: " << e.getReason() << std::endl;
 			credential = new Credential();
 		}
-		catch (std::runtime_error e) {
+		catch (std::runtime_error& e) {
 			std::cout << "Credential parsing failed: " << e.what() << std::endl;
 			credential = new Credential();
 		}
-		cred.close();
+		catch (std::ifstream::failure& f) {
+			std::cout << "Credential I/O failure: " << f.what() << std::endl;
+			credential = new Credential();
+		}
 	}
 
 	bool credentialChanged = false;
