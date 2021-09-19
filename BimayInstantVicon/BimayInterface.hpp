@@ -26,6 +26,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace BimayInstantVicon {
 
+	/// <summary>
+	/// A class to communicate with MyClass web application.
+	/// </summary>
 	class MyClassInterface
 	{
 	private:
@@ -36,10 +39,13 @@ namespace BimayInstantVicon {
 		void login(const std::string& username, const std::string& password);
 		bool isLoggedIn() const;
 
-		class Schedule;
+		class Schedule; // proto
 
 		std::vector<Schedule*>* getSchedules();
 
+		/// <summary>
+		/// A class to hold individual schedule.
+		/// </summary>
 		class Schedule
 		{
 		private:
